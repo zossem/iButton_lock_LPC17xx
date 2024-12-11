@@ -42,9 +42,9 @@
 *._ii
 
 # Generated output files
-/Listings/*
-/Objects/*
-/RTE/*
+Listings/
+Objects/
+RTE/
 
 # Debugger files
 # define exception below if needed
