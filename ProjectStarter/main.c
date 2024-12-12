@@ -9,6 +9,7 @@
 #include "SysTick_timer.h"
 #include "real_time_clock.h"
 #include "flash_operations.h"
+#include "application_mode.h"
 
 void start(void);
 void forever(void);
@@ -31,27 +32,37 @@ void start(void)
 	SystemInit(); //function configures the oscillator (PLL) 
 	UART0_Initialize();
 	SysTick_Initialize();
-	/*
+	mode_Initialize();
+	
 	int hour, min, sec;
 	read_time_from_UART(&hour, &min, &sec);
 	RTC_Initialize(hour, min, sec);
-	*/
+	
 	//prepare_sector(7);
 }
 
 void forever(void)
 {
 	char bfr[31];
+	
+	
 	while (true)
 	{
-		//send_UART_string("jamnik\n\r");
-		//testDelay(10); // never ending function - to see if delay duration is 1 us
+	/*
 		//testRTC();
-		
+		if(get_mode() == WORK_MODE)
+		{
+			send_UART_string("Work mode\r\n");
+		}
+		else
+		{
+			send_UART_string("Config mode\r\n");
+		}
+		*/
 		// Reading the serial number
 		uint8_t serial_number[8];
 		int isOK = read_serial_number(serial_number);
-		
+			
 		if(!isOK)
 		{
 			for(unsigned int i=0; i<8; i++)
@@ -65,6 +76,8 @@ void forever(void)
 			sprintf(bfr, "%d ", isOK);
 			send_UART_string(bfr);
 		}
+		delay_us(5000000);
+		
 	}	
 }
 
@@ -91,7 +104,7 @@ void testRTC(void)
 	currentTime = RTC_GetTime();
 
 	// Wyswietlenie aktualnego czasu
-	sprintf(bfr, "Time: %02d:%02d:%02d\n", currentTime.hour, currentTime.minute, currentTime.second);
+	sprintf(bfr, "Time: %02d:%02d:%02d\r\n", currentTime.hour, currentTime.minute, currentTime.second);
 	send_UART_string(bfr);
 }
 
