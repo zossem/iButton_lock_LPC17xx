@@ -5,7 +5,8 @@
 
 #include "one_wire.h"
 #include "uart0.h"
-#include "delay.h"
+//#include "delay.h"
+#include "SysTick_timer.h"
 #include "real_time_clock.h"
 #include "flash_operations.h"
 
@@ -29,10 +30,12 @@ void start(void)
 {
 	SystemInit(); //function configures the oscillator (PLL) 
 	UART0_Initialize();
-	
+	SysTick_Initialize();
+	/*
 	int hour, min, sec;
 	read_time_from_UART(&hour, &min, &sec);
 	RTC_Initialize(hour, min, sec);
+	*/
 	//prepare_sector(7);
 }
 
@@ -41,9 +44,10 @@ void forever(void)
 	char bfr[31];
 	while (true)
 	{
-		testDelay(1); // never ending function - to see if delay duration is 1 us
-		testRTC();
-		send_UART_string("jamnik");
+		//send_UART_string("jamnik\n\r");
+		//testDelay(10); // never ending function - to see if delay duration is 1 us
+		//testRTC();
+		
 		// Reading the serial number
 		uint8_t serial_number[8];
 		int isOK = read_serial_number(serial_number);
@@ -52,7 +56,7 @@ void forever(void)
 		{
 			for(unsigned int i=0; i<8; i++)
 			{
-				sprintf(bfr, "%c ", serial_number[i]);
+				sprintf(bfr, "%d ", serial_number[i]);
 				send_UART_string(bfr);
 			}
 		}
@@ -66,11 +70,14 @@ void forever(void)
 
 void testDelay(int us)
 {
+	send_UART_string("start deley test\n\r");
 	while (true)
 	{
 		LPC_GPIO0->FIODIR |= (1 << ONE_WIRE_PIN); // Setting pin as output
 		LPC_GPIO0->FIOCLR = (1 << ONE_WIRE_PIN);  // Setting pin as low
+
 		delay_us(us);
+
 		LPC_GPIO0->FIODIR &= ~(1 << ONE_WIRE_PIN); // Setting pin as input
 		delay_us(us);
 	}

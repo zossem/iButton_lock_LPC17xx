@@ -1,5 +1,6 @@
 #include "LPC17xx.h"
-#include "delay.h"
+//#include "delay.h"
+#include "SysTick_timer.h"
 #include "one_wire.h"
 
 #include "uart0.h"
@@ -117,25 +118,27 @@ uint8_t one_wire_read_byte(void)
   */
 int read_serial_number(uint8_t serial_number[]) 
 {
-	send_UART_string("read_serial_number 1\n\r");
+	//send_UART_string("reseting \n\r");
 	if(one_wire_reset())
 	{
-		send_UART_string("read_serial_number 2\n");
+		//send_UART_string("send read ROM\n\r");
 		 one_wire_write_byte(0x33); // "Read ROM" command
-		send_UART_string("read_serial_number 3\n");
+		//send_UART_string("reading...\n");
 		for (int i = 0; i < 8; i++) 
 		{
 			serial_number[i] = one_wire_read_byte();
 		}
-		send_UART_string("read_serial_number 4\n");
+
 		
 		if (check_crc(serial_number)) 
 		{
 			// CRC is correct
+			send_UART_string(" CRC is correct\n\r");
 			return 0;
 		} else 
 		{
 			// CRC is incorrect
+			send_UART_string(" CRC is incorrect\n\r");
 			return -2;
 		}
 	}
