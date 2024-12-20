@@ -18,7 +18,7 @@ void testDelay(int us);
 void testRTC(void);
 void read_time_from_UART(int *hour, int *min, int *sec);
 int my_atoi(const char *str);
-
+void flash_test(void);
 
 
 int main(void)
@@ -147,3 +147,25 @@ int my_atoi(const char *str)
     return result;
 }
 
+void flash_test(void)
+{
+    uint32_t sector_number = 16;
+	
+	uint8_t *data_to_write = (uint8_t*)malloc(sizeof(uint8_t) * 256);
+	char* zosia = "zosia";
+	for(int i = 0; zosia[i] != '\0'; i++)
+	{
+		data_to_write[i] = zosia[i];
+		data_to_write[i+1] = '\0';
+	}
+	write_to_flash_sector(sector_number, data_to_write, 256);
+	
+	uint8_t *read_buffer = (uint8_t*)malloc(sizeof(uint8_t) * 256);
+	read_from_flash(sector_number, read_buffer, 256);
+	send_UART_string((char*)read_buffer);
+	
+	verify_flash_data(data_to_write, read_buffer, 256);
+	
+	free(data_to_write);
+	free(read_buffer);
+}
