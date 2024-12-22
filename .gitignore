@@ -45,6 +45,7 @@
 Listings/
 Objects/
 RTE/
+DebugConfig/
 
 # Debugger files
 # define exception below if needed
