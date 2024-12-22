@@ -10,7 +10,6 @@
       <TargetName>Target 1</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pArmCC>6220000::V6.22::ARMCLANG</pArmCC>
       <pCCUsed>6220000::V6.22::ARMCLANG</pCCUsed>
       <uAC6>1</uAC6>
       <TargetOption>
@@ -441,14 +440,14 @@
               <FilePath>.\SysTick_timer.h</FilePath>
             </File>
             <File>
-              <FileName>application_mode.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\application_mode.c</FilePath>
-            </File>
-            <File>
               <FileName>application_mode.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\application_mode.h</FilePath>
+            </File>
+            <File>
+              <FileName>application_mode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\application_mode.c</FilePath>
             </File>
           </Files>
         </Group>

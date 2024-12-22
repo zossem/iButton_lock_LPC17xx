@@ -2,6 +2,8 @@
 #include "PIN_LPC17xx.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+
 
 #include "one_wire.h"
 #include "uart0.h"
@@ -149,8 +151,7 @@ int my_atoi(const char *str)
 
 void flash_test(void)
 {
-	/*
-    uint32_t sector_number = 16;
+  uint32_t sector_number = 16;
 	
 	uint8_t *data_to_write = (uint8_t*)malloc(sizeof(uint8_t) * 256);
 	char* zosia = "zosia";
@@ -169,5 +170,4 @@ void flash_test(void)
 	
 	free(data_to_write);
 	free(read_buffer);
-	*/
 }
