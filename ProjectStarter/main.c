@@ -7,7 +7,6 @@
 
 #include "one_wire.h"
 #include "uart0.h"
-//#include "delay.h"
 #include "SysTick_timer.h"
 #include "real_time_clock.h"
 #include "flash_operations.h"
@@ -34,6 +33,7 @@ void start(void)
 	UART0_Initialize();
 	SysTick_Initialize();
 	mode_Initialize();
+	lock_Initialize();
 	
 	int year, month, day, hour, min, sec;
 	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
