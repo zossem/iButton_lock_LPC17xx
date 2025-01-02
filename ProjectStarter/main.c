@@ -64,15 +64,21 @@ void forever(void)
 		{
 			for(unsigned int i=0; i<8; i++)
 			{
+				send_UART_string("Read number: ");
 				sprintf(bfr, "%d ", serial_number[i]);
 				send_UART_string(bfr);
+				send_UART_string(" CRC is correct\n\r");
 			}
 		}
-		else
+		else if(isOK == -1)
 		{
-			sprintf(bfr, "%d ", isOK);
-			send_UART_string(bfr);
+				send_UART_string("Slave is not present\n\r");
 		}
+		else if(isOK == -2)
+		{
+				send_UART_string("CRC is incorrect\n\r");
+		}
+		
 		delay_us(5000000);
 		
 	}	

@@ -141,3 +141,29 @@ bool verify_flash_data(uint8_t *data, uint8_t *buffer, uint32_t size) {
     send_UART_string("verified successfully\n");
     return true;
 }
+
+
+
+bool is_registered(uint8_t serial_number[])
+{
+    return true;
+}
+
+void add_history(uint8_t serial_number[], uint8_t date[])
+{
+}
+
+int add_iButton(uint8_t serial_number[])
+{
+    return 0;
+}
+
+
+void print_history()
+{
+}
+
+int delete_iButton(uint8_t serial_number[])
+{
+    return 0;
+}

@@ -133,18 +133,15 @@ int read_serial_number(uint8_t serial_number[])
 		if (check_crc(serial_number)) 
 		{
 			// CRC is correct
-			send_UART_string(" CRC is correct\n\r");
 			return 0;
 		} else 
 		{
 			// CRC is incorrect
-			send_UART_string(" CRC is incorrect\n\r");
 			return -2;
 		}
 	}
 	else
 	{
-		send_UART_string("slave is not present\n\r");
 		// slave is not present
 		return -1;
 	}	
