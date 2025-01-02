@@ -60,58 +60,58 @@ void forever(void)
 			
 		if(!is_SN_read_unsuccessfully)
 		{
+			send_UART_string("Read number: ");
 			for(unsigned int i=0; i<8; i++)
 			{
-				send_UART_string("Read number: ");
 				sprintf(bfr, "%d ", serial_number[i]);
 				send_UART_string(bfr);
-				send_UART_string(" CRC is correct\n\r");
+			}
+			send_UART_string(" CRC is correct\n\r");
 				
-				if(is_registered(serial_number)) // there is such serial number in database
+			if(is_registered(serial_number)) // there is such serial number in database
+			{
+				// chceck mode of application
+				if(get_mode() == WORK_MODE) // WORK MODE - opening lock or denying access
 				{
-					// chceck mode of application
-					if(get_mode() == WORK_MODE) // WORK MODE - opening lock or denying access
-					{
-						Time currentTime;
-						// Read current time
-						currentTime = RTC_GetTime();
-						uint8_t date[6];
-						date[0]=currentTime.year;
-						date[1]=currentTime.month;
-						date[2]=currentTime.day;
-						date[3]=currentTime.hour;
-						date[4]=currentTime.minute;
-						date[5]=currentTime.second;
+					Time currentTime;
+					// Read current time
+					currentTime = RTC_GetTime();
+					uint8_t date[6];
+					date[0]=currentTime.year;
+					date[1]=currentTime.month;
+					date[2]=currentTime.day;
+					date[3]=currentTime.hour;
+					date[4]=currentTime.minute;
+					date[5]=currentTime.second;
 						
-						open_lock();
-						add_history(serial_number, date);
-					}
-					else	//CONFIG MODE - adding new iButtons
-					{
-						send_UART_string("This iButton is already registered\n\r");
-					}
+					open_lock();
+					add_history(serial_number, date);
 				}
-				else // there is no such serial number in database
+				else	//CONFIG MODE - adding new iButtons
 				{
-					// chceck mode of application
-					if(get_mode() == WORK_MODE) // WORK MODE - opening lock or denying access
-					{
-						send_UART_string("This iButton is not allowed to open this lock.\n\r");
-					}
-					else	//CONFIG MODE - adding new iButtons
-					{
-						int is_iButton_added_unsuccessfully = add_iButton(serial_number);
-						if(!is_iButton_added_unsuccessfully)
-						{
-							send_UART_string("This iButton now has lock access.\n\r");
-						}
-						else if(is_iButton_added_unsuccessfully == 1)
-						{
-							send_UART_string("Error: The limit of iButtons that can access the lock has been reached. This iButton has not been granted access.\n\r");
-						}
-					}
+					send_UART_string("This iButton is already registered\n\r");
 				}
 			}
+			else // there is no such serial number in database
+			{
+				// chceck mode of application
+				if(get_mode() == WORK_MODE) // WORK MODE - opening lock or denying access
+				{
+					send_UART_string("This iButton is not allowed to open this lock.\n\r");
+				}
+				else	//CONFIG MODE - adding new iButtons
+				{
+					int is_iButton_added_unsuccessfully = add_iButton(serial_number);
+					if(!is_iButton_added_unsuccessfully)
+					{
+						send_UART_string("This iButton now has lock access.\n\r");
+					}
+					else if(is_iButton_added_unsuccessfully == 1)
+					{
+						send_UART_string("Error: The limit of iButtons that can access the lock has been reached. This iButton has not been granted access.\n\r");
+					}
+				}
+			}	
 		}
 		else if(is_SN_read_unsuccessfully == -1)
 		{
@@ -233,7 +233,63 @@ void EINT1_IRQHandler(void)
 	if (LPC_SC->EXTINT & (1 << 1)) // Check if the interrupt comes from EINT1
 	{
 		LPC_SC->EXTINT = (1 << 1);   // Clear the EINT1 interrupt flag
+		
 		send_UART_string("Click 2\r\n");
+		
+		if(get_mode() == CONFIG_MODE)
+		{
+			send_UART_string("Insert the iButton you want to remove from the database.\r\n");
+			
+			bool is_present=false;
+			uint8_t serial_number[8];
+			
+			for(int t=0; t < 60; t++) // Tries to read the iButton for approximately 60 seconds
+			{
+				// Reading the serial number
+				int is_SN_read_unsuccessfully = read_serial_number(serial_number);
+					
+				if(!is_SN_read_unsuccessfully)
+				{
+					send_UART_string("Read number: ");
+					char bfr[31];
+					for(unsigned int i=0; i<8; i++)
+					{
+						sprintf(bfr, "%d ", serial_number[i]);
+						send_UART_string(bfr);
+					}
+					send_UART_string(" CRC is correct\n\r");
+					is_present = true;
+					break;
+				}
+				else if(is_SN_read_unsuccessfully == -1)
+				{
+					send_UART_string("Slave is not present\n\r");
+				}
+				else if(is_SN_read_unsuccessfully == -2)
+				{
+					send_UART_string("CRC is incorrect\n\r");
+				}
+				
+				delay_us(10000000); //Wait 1 s
+			}
+
+			if(is_present)
+			{
+				int is_iButton_deleted_unsuccessfully = delete_iButton(serial_number);
+				if(!is_iButton_deleted_unsuccessfully)
+				{
+					send_UART_string("This iButton has now lost lock access.\n\r");
+				}
+				else if(is_iButton_deleted_unsuccessfully == 1)
+				{
+					send_UART_string("Error: This iButton has not access before.\n\r");
+				}
+			}
+			else // unpresent iButton
+			{
+				send_UART_string("Error: Failed to detect iButton.\n\r");
+			}
+		}		
 	}
 } 
 
