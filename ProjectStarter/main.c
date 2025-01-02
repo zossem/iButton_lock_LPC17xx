@@ -16,11 +16,9 @@
 void start(void);
 void forever(void);
 
-void testDelay(int us);
-void testRTC(void);
-void read_time_from_UART(int *hour, int *min, int *sec);
+void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, int *sec);
 int my_atoi(const char *str);
-void flash_test(void);
+//void flash_test(void);
 
 
 int main(void)
@@ -36,11 +34,9 @@ void start(void)
 	SysTick_Initialize();
 	mode_Initialize();
 	
-	int hour, min, sec;
-	read_time_from_UART(&hour, &min, &sec);
-	RTC_Initialize(hour, min, sec);
-	
-	//prepare_sector(7);
+	int year, month, day, hour, min, sec;
+	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
+	RTC_Initialize(year, month, day, hour, min, sec);
 }
 
 void forever(void)
@@ -51,7 +47,6 @@ void forever(void)
 	while (true)
 	{
 	/*
-		//testRTC();
 		if(get_mode() == WORK_MODE)
 		{
 			send_UART_string("Work mode\r\n");
@@ -83,36 +78,31 @@ void forever(void)
 	}	
 }
 
-void testDelay(int us)
-{
-	send_UART_string("start deley test\n\r");
-	while (true)
-	{
-		LPC_GPIO0->FIODIR |= (1 << ONE_WIRE_PIN); // Setting pin as output
-		LPC_GPIO0->FIOCLR = (1 << ONE_WIRE_PIN);  // Setting pin as low
-
-		delay_us(us);
-
-		LPC_GPIO0->FIODIR &= ~(1 << ONE_WIRE_PIN); // Setting pin as input
-		delay_us(us);
-	}
-}
-
-void testRTC(void)
-{
-	char bfr[31];
-	Time currentTime;
-	// Odczyt aktualnego czasu z RTC
-	currentTime = RTC_GetTime();
-
-	// Wyswietlenie aktualnego czasu
-	sprintf(bfr, "Time: %02d:%02d:%02d\r\n", currentTime.hour, currentTime.minute, currentTime.second);
-	send_UART_string(bfr);
-}
-
-void read_time_from_UART(int *hour, int *min, int *sec)
+void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, int *sec)
 {
     char buffer[3];
+		send_UART_string("Podaj dzien w formacie YYMMDD:\r\n");
+	
+		// Odczyt roku
+    for (int i = 0; i < 2; i++) {
+        buffer[i] = read_UART_char();
+    }
+    buffer[2] = '\0';
+    *year = 2000 + my_atoi(buffer);
+
+    // Odczyt miesiaca
+    for (int i = 0; i < 2; i++) {
+        buffer[i] = read_UART_char();
+    }
+    buffer[2] = '\0';
+    *month = my_atoi(buffer);
+
+    // Odczyt sekund
+    for (int i = 0; i < 2; i++) {
+        buffer[i] = read_UART_char();
+    }
+    buffer[2] = '\0';
+    *day = my_atoi(buffer);
 
     // Wyslanie komunikatu do uzytkownika
     send_UART_string("Podaj czas w formacie HHMMSS:\r\n");
@@ -148,7 +138,7 @@ int my_atoi(const char *str)
     }
     return result;
 }
-
+/*
 void flash_test(void)
 {
   uint32_t sector_number = 16;
@@ -171,3 +161,4 @@ void flash_test(void)
 	free(data_to_write);
 	free(read_buffer);
 }
+*/
