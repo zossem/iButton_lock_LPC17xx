@@ -12,6 +12,7 @@
 #include "real_time_clock.h"
 #include "flash_operations.h"
 #include "application_mode.h"
+#include "lock.h"
 
 void start(void);
 void forever(void);
@@ -37,6 +38,7 @@ void start(void)
 	int year, month, day, hour, min, sec;
 	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
 	RTC_Initialize(year, month, day, hour, min, sec);
+	
 }
 
 void forever(void)
@@ -46,21 +48,11 @@ void forever(void)
 	
 	while (true)
 	{
-	/*
-		if(get_mode() == WORK_MODE)
-		{
-			send_UART_string("Work mode\r\n");
-		}
-		else
-		{
-			send_UART_string("Config mode\r\n");
-		}
-		*/
 		// Reading the serial number
 		uint8_t serial_number[8];
-		int isOK = read_serial_number(serial_number);
+		int is_SN_read_unsuccessfully = read_serial_number(serial_number);
 			
-		if(!isOK)
+		if(!is_SN_read_unsuccessfully)
 		{
 			for(unsigned int i=0; i<8; i++)
 			{
@@ -68,13 +60,58 @@ void forever(void)
 				sprintf(bfr, "%d ", serial_number[i]);
 				send_UART_string(bfr);
 				send_UART_string(" CRC is correct\n\r");
+				
+				if(is_registered(serial_number)) // there is such serial number in database
+				{
+					// chceck mode of application
+					if(get_mode() == WORK_MODE) // WORK MODE - opening lock or denying access
+					{
+						Time currentTime;
+						// Read current time
+						currentTime = RTC_GetTime();
+						uint8_t date[6];
+						date[0]=currentTime.year;
+						date[1]=currentTime.month;
+						date[2]=currentTime.day;
+						date[3]=currentTime.hour;
+						date[4]=currentTime.minute;
+						date[5]=currentTime.second;
+						
+						open_lock();
+						add_history(serial_number, date);
+					}
+					else	//CONFIG MODE - adding new iButtons
+					{
+						send_UART_string("This iButton is already registered\n\r");
+					}
+				}
+				else // there is no such serial number in database
+				{
+					// chceck mode of application
+					if(get_mode() == WORK_MODE) // WORK MODE - opening lock or denying access
+					{
+						send_UART_string("This iButton is not allowed to open this lock.\n\r");
+					}
+					else	//CONFIG MODE - adding new iButtons
+					{
+						int is_iButton_added_unsuccessfully = add_iButton(serial_number);
+						if(!is_iButton_added_unsuccessfully)
+						{
+							send_UART_string("This iButton now has lock access.\n\r");
+						}
+						else if(is_iButton_added_unsuccessfully == 1)
+						{
+							send_UART_string("Error: The limit of iButtons that can access the lock has been reached. This iButton has not been granted access.\n\r");
+						}
+					}
+				}
 			}
 		}
-		else if(isOK == -1)
+		else if(is_SN_read_unsuccessfully == -1)
 		{
 				send_UART_string("Slave is not present\n\r");
 		}
-		else if(isOK == -2)
+		else if(is_SN_read_unsuccessfully == -2)
 		{
 				send_UART_string("CRC is incorrect\n\r");
 		}
