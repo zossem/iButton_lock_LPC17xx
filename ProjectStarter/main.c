@@ -18,6 +18,10 @@ void forever(void);
 
 void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, int *sec);
 int my_atoi(const char *str);
+
+void setup_eint0(void); // Inicialize interrupts from key0
+void setup_eint1(void); // Inicialize interrupts from key1
+
 //void flash_test(void);
 
 
@@ -34,6 +38,8 @@ void start(void)
 	SysTick_Initialize();
 	mode_Initialize();
 	lock_Initialize();
+	setup_eint0();
+	setup_eint1();
 	
 	int year, month, day, hour, min, sec;
 	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
@@ -181,6 +187,56 @@ int my_atoi(const char *str)
     }
     return result;
 }
+
+void setup_eint0(void) 
+{
+	LPC_PINCON->PINSEL4 |= (1 << 20); // Set up P2.10 as EINT0
+	// Set: EINT0 is edge sensitive
+	LPC_SC->EXTMODE |= (1 << 0);
+	// Set: EINT0 is high-active or rising-edge sensitive
+	LPC_SC->EXTPOLAR &= ~(1 << 0); 
+	// Clear the EINT0 interrupt flag
+	LPC_SC->EXTINT = (1 << 0);        
+
+	// Enable the EINT0 interrupt in NVIC
+	NVIC_EnableIRQ(EINT0_IRQn);      
+}
+
+void setup_eint1(void) 
+{
+	LPC_PINCON->PINSEL4 |= (1 << 22); // Set up P2.11 as EINT1
+	// Set: EINT1 is edge sensitive
+	LPC_SC->EXTMODE |= (1 << 1);
+	// Set: EINT1 is high-active or rising-edge sensitive
+	LPC_SC->EXTPOLAR &= ~(1 << 1); 
+	// Clear the EINT1 interrupt flag
+	LPC_SC->EXTINT = (1 << 1);        
+
+	// Enable the EINT1 interrupt in NVIC
+	NVIC_EnableIRQ(EINT1_IRQn);      
+}
+
+void EINT0_IRQHandler(void)
+{
+	if (LPC_SC->EXTINT & (1 << 0)) // Check if the interrupt comes from EINT0
+	{
+		LPC_SC->EXTINT = (1 << 0);   // Clear the EINT0 interrupt flag
+		
+		print_history();
+		
+		send_UART_string("Click 1\r\n"); 
+	}
+} 
+
+void EINT1_IRQHandler(void)
+{
+	if (LPC_SC->EXTINT & (1 << 1)) // Check if the interrupt comes from EINT1
+	{
+		LPC_SC->EXTINT = (1 << 1);   // Clear the EINT1 interrupt flag
+		send_UART_string("Click 2\r\n");
+	}
+} 
+
 /*
 void flash_test(void)
 {
