@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define DATABASE_SECTOR 10
+
 uint32_t get_flash_sector_address(uint32_t sector_number);
 bool prepare_sector(uint32_t sector_number);
 bool erase_sector(uint32_t sector_number);
