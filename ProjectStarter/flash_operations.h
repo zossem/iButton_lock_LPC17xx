@@ -8,16 +8,14 @@
 
 #include "LPC17xx.h"
 #include <stdbool.h>
-#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define BUTTON_REGISTER 10
 #define DATA_REGISTER 11
 
-bool prepare_sector(uint32_t sector_number);
-bool erase_sector(uint32_t sector_number);
 bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size);
-bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size);
-bool verify_flash_data(uint8_t *data, uint8_t *buffer, uint32_t size);
+bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uint32_t offset);
 
 
 /** Checks whether the iButton is in the database of iButtons that have access to the lock.

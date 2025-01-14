@@ -22,25 +22,27 @@ int my_atoi(const char *str);
 void setup_eint0(void); // Inicialize interrupts from key0
 void setup_eint1(void); // Inicialize interrupts from key1
 
-//void flash_test(void);
+void flash_test(void);
 
 
 int main(void)
 {
 	start();
-	forever();
+	//flash_test();
+	//forever();
 }
 
 void start(void)
 {
 	SystemInit(); //function configures the oscillator (PLL) 
 	UART0_Initialize();
-	SysTick_Initialize();
+	SysTick_Initialize();// Flash Timeout po odblokowaniu
+	//(naprawione) przerwania przeszkadzaja flashowi, wiec w funkcjach na
+	//flashu trzeba je wylaczyc (wylaczylem tez na uarcie)
 	mode_Initialize();
-	lock_Initialize();
+	//lock_Initialize();// Nachodzi na piny uart0 (do poprawy)
 	setup_eint0();
 	setup_eint1();
-	
 	int year, month, day, hour, min, sec;
 	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
 	RTC_Initialize(year, month, day, hour, min, sec);
@@ -129,6 +131,7 @@ void forever(void)
 
 void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, int *sec)
 {
+		__disable_irq();
     char buffer[3];
 		send_UART_string("Podaj dzien w formacie YYMMDD:\r\n");
 	
@@ -176,6 +179,7 @@ void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, i
     }
     buffer[2] = '\0';
     *sec = my_atoi(buffer);
+		__enable_irq();
 }
 
 int my_atoi(const char *str)
@@ -293,7 +297,8 @@ void EINT1_IRQHandler(void)
 	}
 } 
 
-/*
+
+/* Test dziala poprawnie, jesli on dziala to znaczy ze jest dobrze
 void flash_test(void)
 {
   uint32_t sector_number = 16;
@@ -308,12 +313,11 @@ void flash_test(void)
 	write_to_flash_sector(sector_number, data_to_write, 256);
 	
 	uint8_t *read_buffer = (uint8_t*)malloc(sizeof(uint8_t) * 256);
-	read_from_flash(sector_number, read_buffer, 256);
+	read_from_flash(sector_number, read_buffer, 256, 0);
 	send_UART_string((char*)read_buffer);
-	
-	verify_flash_data(data_to_write, read_buffer, 256);
 	
 	free(data_to_write);
 	free(read_buffer);
 }
 */
+

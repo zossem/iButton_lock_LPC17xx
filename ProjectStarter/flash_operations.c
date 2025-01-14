@@ -7,9 +7,9 @@
 typedef void (*IAP)(unsigned int[], unsigned int[]);
 IAP iap_entry = (IAP) IAP_LOCATION;
 
-#define SYSTEM_CLOCK_KHZ (SystemCoreClock / 1000);
+#define SYSTEM_CLOCK_KHZ (SystemCoreClock / 1000)
 
-void SendErrorUart0(unsigned int *n){
+void send_error_uart0(unsigned int *n){
     switch (*n)
     {
     case 1:
@@ -46,6 +46,7 @@ void SendErrorUart0(unsigned int *n){
         send_UART_string("BUSY\n");
         break;
     default:
+        send_UART_string("UNKNOWN_ERROR\n");
         break;
     }
 }
@@ -72,7 +73,8 @@ bool prepare_sector(uint32_t sector_number)
     command[2] = sector_number;  // Numer sektora (tylko jeden sektor)
     iap_entry(command, result);
     if (result[0] != 0) {
-			SendErrorUart0(result);
+			send_error_uart0(result);
+				__enable_irq();
         return false;  // Obsluga bledu
     }
 		send_UART_string("prepare success\n");
@@ -90,7 +92,8 @@ bool erase_sector(uint32_t sector_number)
     command[3] = SYSTEM_CLOCK_KHZ; // Czestotliwosc zegara w kHz
     iap_entry(command, result);
     if (result[0] != 0) {
-			SendErrorUart0(result);
+			send_error_uart0(result);
+				__enable_irq();
         return false;
     }
 		send_UART_string("erase success\n");
@@ -100,17 +103,20 @@ bool erase_sector(uint32_t sector_number)
 // Funkcja zapisu danych do sektora pamieci Flash
 bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
 {
+		__disable_irq();
     unsigned int command[5];
     unsigned int result[5];
     
     uint32_t flash_address = get_flash_sector_address(sector_number); // Oblicz adres sektora
     if (flash_address == 0xFFFFFFFF) {
         // Blad: nieprawidlowy numer sektora
+				__enable_irq();
         return false;
     }
 		
 		if (size % 256 != 0) {
         send_UART_string("Error: Data size must be a multiple of 256 bytes.\n");
+				__enable_irq();
         return false;
     }
 		
@@ -127,15 +133,17 @@ bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
     iap_entry(command, result);
     if (result[0] != 0)
 		{
-			SendErrorUart0(result);
-        return false;  // Obsluga bledu
+			send_error_uart0(result);
+			__enable_irq();
+      return false;  // Obsluga bledu
     }
 		send_UART_string("write success\n");
+		__enable_irq();
     return true;  // Sukces
 }
 
 // Funkcja odczytu danych z pamieci Flash
-bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uint32_t offset = 0)
+bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uint32_t offset)
 {
     // Oblicz adres startowy sektora
     uint32_t flash_address = get_flash_sector_address(sector_number);
@@ -185,7 +193,7 @@ void add_history(uint8_t serial_number[], uint8_t date[])
 
 int add_iButton(uint8_t serial_number[])
 {
-    int saved = 0 //read from flash ilosc zapisanych
+    int saved = 0; //read from flash ilosc zapisanych
     if (saved >= 32) return 1;
 	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
     if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
@@ -214,7 +222,7 @@ void print_history()
 int delete_iButton(uint8_t serial_number[])
 {
     if (!is_registered(serial_number)) return 1;
-    int saved = 0 //read from flash ilosc zapisanych
+    int saved = 0; //read from flash ilosc zapisanych
     bool removed = false;
 	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
     if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
@@ -233,7 +241,7 @@ int delete_iButton(uint8_t serial_number[])
         count++;
     }
 
-    for (int i = count, i < saved - 1; i++){
+    for (int i = count; i < saved - 1; i++){
         for (int i = 0; i < 8; i++){
             data[i] = data[i+8];
         }
