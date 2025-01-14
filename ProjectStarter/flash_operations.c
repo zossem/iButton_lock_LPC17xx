@@ -97,24 +97,6 @@ bool erase_sector(uint32_t sector_number)
     return true; // Sukces
 }
 
-// Funkcja sprawdzajaca, czy sektor Flash jest w calosci pusty
-bool is_sector_empty(uint32_t sector_number)
-{
-    uint32_t flash_address = get_flash_sector_address(sector_number); // Oblicz adres startowy sektora
-    if (flash_address == 0xFFFFFFFF) {
-        // Blad: nieprawidlowy numer sektora
-        return false;
-    }
-    uint32_t sector_size = (sector_number < 16) ? 4 * 1024 : 32 * 1024; // Oblicz rozmiar sektora (4 KB dla sektor�w 0�15, 32 KB dla sektor�w 16�29)
-
-    for (uint32_t i = 0; i < sector_size; i++) { // Iteracja przez sektor w poszukiwaniu danych innych niz 0xFF
-        if (*((volatile uint8_t *)(flash_address + i)) != 0xFF) {
-            return false;  // Znalazl zajety bajt
-        }
-    }
-    return true;  // Sektor jest pusty
-}
-
 // Funkcja zapisu danych do sektora pamieci Flash
 bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
 {
@@ -168,19 +150,15 @@ bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uin
     return true;  // Sukces
 }
 
-// Funkcja por�wnujaca dane (zapisane i odczytane)
-bool verify_flash_data(uint8_t *data, uint8_t *buffer, uint32_t size) {
+// Funkcja por�wnujaca dane
+bool verify_data(uint8_t *data, uint8_t *buffer, uint32_t size) {
     for (uint32_t i = 0; i < size; i++) {
         if (data[i] != buffer[i]) {
-            //send_UART_string("Verification failed\n");
             return false;
         }
     }
-    //send_UART_string("verified successfully\n");
     return true;
 }
-
-
 
 bool is_registered(uint8_t serial_number[]) 
 {
@@ -188,8 +166,9 @@ bool is_registered(uint8_t serial_number[])
     if (read_number == NULL) {
         return false;
     }
-    for (int i = 0; i < 32; i++) { // Baza danych zawiera 32 numery po 8 bajtów
-        read_from_flash(DATABASE_SECTOR, read_number, 8, i * 8);
+    int saved = 0; //read from flash ilosc zapisanych
+    for (int i = 0; i < saved; i++) { // Baza danych zawiera 32 numery po 8 bajtów
+        read_from_flash(BUTTON_REGISTER, read_number, 8, i * 8);
         if (verify_flash_data(serial_number, read_number, 8)) {
             free(read_number);
             return true;
@@ -205,6 +184,14 @@ void add_history(uint8_t serial_number[], uint8_t date[])
 
 int add_iButton(uint8_t serial_number[])
 {
+    int saved = 0 //read from flash ilosc zapisanych
+    if (saved > 32) return 1;
+	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
+    read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0);
+    for (int i = 0; i < 8; i++){
+        data[saved * 8 + i] = serial_number[i];
+    }
+    write_to_flash_sector(BUTTON_REGISTER, data, 8*32);
     return 0;
 }
 
