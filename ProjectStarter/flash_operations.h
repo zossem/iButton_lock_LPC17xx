@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #define BUTTON_REGISTER 10
+#define DATA_REGISTER 11
 
 bool prepare_sector(uint32_t sector_number);
 bool erase_sector(uint32_t sector_number);

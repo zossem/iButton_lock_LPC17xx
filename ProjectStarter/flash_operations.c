@@ -168,7 +168,8 @@ bool is_registered(uint8_t serial_number[])
     }
     int saved = 0; //read from flash ilosc zapisanych
     for (int i = 0; i < saved; i++) { // Baza danych zawiera 32 numery po 8 bajtów
-        read_from_flash(BUTTON_REGISTER, read_number, 8, i * 8);
+        if(!read_from_flash(BUTTON_REGISTER, read_number, 8, i * 8)) break;
+
         if (verify_flash_data(serial_number, read_number, 8)) {
             free(read_number);
             return true;
@@ -185,13 +186,23 @@ void add_history(uint8_t serial_number[], uint8_t date[])
 int add_iButton(uint8_t serial_number[])
 {
     int saved = 0 //read from flash ilosc zapisanych
-    if (saved > 32) return 1;
+    if (saved >= 32) return 1;
 	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
-    read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0);
+    if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
+    {
+        free(data);
+        return -1;
+    }
     for (int i = 0; i < 8; i++){
         data[saved * 8 + i] = serial_number[i];
     }
-    write_to_flash_sector(BUTTON_REGISTER, data, 8*32);
+    if(!write_to_flash_sector(BUTTON_REGISTER, data, 8*32)) 
+    {
+        free(data);
+        return -1;
+    }
+    saved++; // zapisac do Flash
+    free(data);
     return 0;
 }
 
@@ -202,5 +213,38 @@ void print_history()
 
 int delete_iButton(uint8_t serial_number[])
 {
+    if (!is_registered(serial_number)) return 1;
+    int saved = 0 //read from flash ilosc zapisanych
+    bool removed = false;
+	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
+    if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
+    {
+        free(data);
+        return -1;
+    }
+    int count = 0;
+    while (!removed){
+        if(verify_data(data + count * 8, serial_number, 8)){
+            removed = true;
+            for (int i = 0; i < 8; i++){
+                data[count + i] = 0xFF;
+            }
+        }
+        count++;
+    }
+
+    for (int i = count, i < saved - 1; i++){
+        for (int i = 0; i < 8; i++){
+            data[i] = data[i+8];
+        }
+    }
+
+    if(!write_to_flash_sector(BUTTON_REGISTER, data, 8*32)) 
+    {
+        free(data);
+        return -1;
+    }
+    
+    saved--; //zapisac do flash
     return 0;
 }
