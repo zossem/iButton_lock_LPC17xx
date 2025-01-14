@@ -9,6 +9,47 @@ IAP iap_entry = (IAP) IAP_LOCATION;
 
 #define SYSTEM_CLOCK_KHZ (SystemCoreClock / 1000);
 
+void SendErrorUart0(unsigned int *n){
+    switch (*n)
+    {
+    case 1:
+        send_UART_string("INVALID_COMMAND\n");
+        break;
+    case 2:
+        send_UART_string("SRC_ADDR_ERROR\n");
+        break;
+    case 3:
+        send_UART_string("DST_ADDR_ERROR\n");
+        break;
+    case 4:
+        send_UART_string("SRC_ADDR_NOT_MAPPED\n");
+        break;
+    case 5:
+        send_UART_string("DST_ADDR_NOT_MAPPED\n");
+        break;
+    case 6:
+        send_UART_string("COUNT_ERROR\n");
+        break;
+    case 7:
+        send_UART_string("INVALID_SECTOR\n");
+        break;
+    case 8:
+        send_UART_string("SECTOR_NOT_BLANK\n");
+        break;
+    case 9:
+        send_UART_string(" SECTOR_NOT_PREPARED\n");
+        break;
+    case 10:
+        send_UART_string("COMPARE_ERROR\n");
+        break;
+    case 11:
+        send_UART_string("BUSY\n");
+        break;
+    default:
+        break;
+    }
+}
+
 // Funkcja wyliczajaca adres sektora Flash na podstawie jego numeru
 uint32_t get_flash_sector_address(uint32_t sector_number)
 {
@@ -31,7 +72,7 @@ bool prepare_sector(uint32_t sector_number)
     command[2] = sector_number;  // Numer sektora (tylko jeden sektor)
     iap_entry(command, result);
     if (result[0] != 0) {
-				send_UART_string("Failed to prepare\n");
+			SendErrorUart0(result);
         return false;  // Obsluga bledu
     }
 		send_UART_string("prepare success\n");
@@ -49,8 +90,8 @@ bool erase_sector(uint32_t sector_number)
     command[3] = SYSTEM_CLOCK_KHZ; // Czestotliwosc zegara w kHz
     iap_entry(command, result);
     if (result[0] != 0) {
-				send_UART_string("Failed to erase\n");
-        return false;  // Obsluga bledu
+			SendErrorUart0(result);
+        return false;
     }
 		send_UART_string("erase success\n");
     return true; // Sukces
@@ -104,10 +145,7 @@ bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
     iap_entry(command, result);
     if (result[0] != 0)
 		{
-				//char buffer[24];
-				//sprintf(buffer, "%d", result[0]);
-				//send_UART_string(buffer);
-				send_UART_string("Failed to write\n");
+			SendErrorUart0(result);
         return false;  // Obsluga bledu
     }
 		send_UART_string("write success\n");
@@ -148,10 +186,8 @@ bool is_registered(uint8_t serial_number[])
 {
     uint8_t *read_number = (uint8_t *)malloc(8 * sizeof(uint8_t));
     if (read_number == NULL) {
-        // Obsługa błędu alokacji pamięci
         return false;
     }
-
     for (int i = 0; i < 32; i++) { // Baza danych zawiera 32 numery po 8 bajtów
         read_from_flash(DATABASE_SECTOR, read_number, 8, i * 8);
         if (verify_flash_data(serial_number, read_number, 8)) {
@@ -159,7 +195,6 @@ bool is_registered(uint8_t serial_number[])
             return true;
         }
     }
-    
     free(read_number);
     return false;
 }
