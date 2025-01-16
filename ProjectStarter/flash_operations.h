@@ -12,7 +12,12 @@
 #include <stdlib.h>
 
 #define BUTTON_REGISTER 10
-#define DATA_REGISTER 11
+#define MAINTANANCE_REGISTER 11
+#define HISTORY_REGISTER 12
+#define R_NUM_OFFSET 8
+
+//Checks wheather flash already has data, if not, then prepares everything for the use
+void initialize_flash();
 
 /** Checks whether the iButton is in the database of iButtons that have access to the lock.
   * Returns: true - access, false - no access.
