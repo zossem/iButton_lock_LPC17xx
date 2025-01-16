@@ -2,7 +2,8 @@
 #define _FLASH_OPERATIONS_
 
 //w przypadku korzystania z malloca heap musi zostac ustawiony
-//(minimum 256 bytow, bo tyle ma najmniejszy zapis)
+//(minimum 256 bajtow, bo tyle ma najmniejszy zapis)
+//(Jako ze korzystamy z sektorow 4kB, potrzebujemy minimum tyle na heapie)
 //w przypadku z korzystania ze zwyklych tablic nalezy zwiekszyc stack
 //ale nie polecam bo latwo zapchac (malloc GUROM)
 
