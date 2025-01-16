@@ -14,10 +14,6 @@
 #define BUTTON_REGISTER 10
 #define DATA_REGISTER 11
 
-bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size);
-bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uint32_t offset);
-
-
 /** Checks whether the iButton is in the database of iButtons that have access to the lock.
   * Returns: true - access, false - no access.
   */

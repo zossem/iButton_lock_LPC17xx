@@ -74,7 +74,6 @@ bool prepare_sector(uint32_t sector_number)
     iap_entry(command, result);
     if (result[0] != 0) {
 			send_error_uart0(result);
-				__enable_irq();
         return false;  // Obsluga bledu
     }
 		send_UART_string("prepare success\n");
@@ -93,7 +92,6 @@ bool erase_sector(uint32_t sector_number)
     iap_entry(command, result);
     if (result[0] != 0) {
 			send_error_uart0(result);
-				__enable_irq();
         return false;
     }
 		send_UART_string("erase success\n");
@@ -103,20 +101,17 @@ bool erase_sector(uint32_t sector_number)
 // Funkcja zapisu danych do sektora pamieci Flash
 bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
 {
-		__disable_irq();
     unsigned int command[5];
     unsigned int result[5];
     
     uint32_t flash_address = get_flash_sector_address(sector_number); // Oblicz adres sektora
     if (flash_address == 0xFFFFFFFF) {
         // Blad: nieprawidlowy numer sektora
-				__enable_irq();
         return false;
     }
 		
 		if (size % 256 != 0) {
         send_UART_string("Error: Data size must be a multiple of 256 bytes.\n");
-				__enable_irq();
         return false;
     }
 		
@@ -134,11 +129,9 @@ bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
     if (result[0] != 0)
 		{
 			send_error_uart0(result);
-			__enable_irq();
       return false;  // Obsluga bledu
     }
 		send_UART_string("write success\n");
-		__enable_irq();
     return true;  // Sukces
 }
 
@@ -170,35 +163,43 @@ bool verify_data(uint8_t *data, uint8_t *buffer, uint32_t size) {
 
 bool is_registered(uint8_t serial_number[]) 
 {
+		__disable_irq();
     uint8_t *read_number = (uint8_t *)malloc(8 * sizeof(uint8_t));
     if (read_number == NULL) {
+				__enable_irq();
         return false;
     }
-    int saved = 0; //read from flash ilosc zapisanych
+    int saved = 1; //read from flash ilosc zapisanych
     for (int i = 0; i < saved; i++) { // Baza danych zawiera 32 numery po 8 bajtów
         if(!read_from_flash(BUTTON_REGISTER, read_number, 8, i * 8)) break;
 
-        if (verify_flash_data(serial_number, read_number, 8)) {
+        if (verify_data(serial_number, read_number, 8)) {
             free(read_number);
+						__enable_irq();
             return true;
         }
     }
     free(read_number);
+		__enable_irq();
     return false;
 }
 
 void add_history(uint8_t serial_number[], uint8_t date[])
 {
+		__disable_irq();
+		__enable_irq();
 }
 
 int add_iButton(uint8_t serial_number[])
 {
+		__disable_irq();
     int saved = 0; //read from flash ilosc zapisanych
     if (saved >= 32) return 1;
 	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
     if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
     {
         free(data);
+				__enable_irq();
         return -1;
     }
     for (int i = 0; i < 8; i++){
@@ -207,26 +208,36 @@ int add_iButton(uint8_t serial_number[])
     if(!write_to_flash_sector(BUTTON_REGISTER, data, 8*32)) 
     {
         free(data);
+				__enable_irq();
         return -1;
     }
     saved++; // zapisac do Flash
     free(data);
+		__enable_irq();
     return 0;
 }
 
 
 void print_history()
 {
+		__disable_irq();
+		__enable_irq();
 }
 
 int delete_iButton(uint8_t serial_number[])
 {
-    if (!is_registered(serial_number)) return 1;
-    int saved = 0; //read from flash ilosc zapisanych
+		__disable_irq();
+    if (is_registered(serial_number) == false)
+		{
+			__enable_irq();
+			return 1;
+		}
+    int saved = 1; //read from flash ilosc zapisanych
     bool removed = false;
 	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
     if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
     {
+				__enable_irq();
         free(data);
         return -1;
     }
@@ -250,9 +261,11 @@ int delete_iButton(uint8_t serial_number[])
     if(!write_to_flash_sector(BUTTON_REGISTER, data, 8*32)) 
     {
         free(data);
+				__enable_irq();
         return -1;
     }
     
+		__enable_irq();
     saved--; //zapisac do flash
     return 0;
 }

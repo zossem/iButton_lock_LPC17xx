@@ -28,6 +28,15 @@ void flash_test(void);
 int main(void)
 {
 	start();
+	uint8_t a[8] = {0,1,2,3,4,5,6,7} ;
+	if(add_iButton(a) == 0) send_UART_string("Zapisalo\n");
+	if(is_registered(a) == true) send_UART_string("Jest w srodku\n");
+	int out = delete_iButton(a);
+	if(out == 0) send_UART_string("Usuniety\n");
+	if(out == -1) send_UART_string("Bardzo zle\n");
+	if(out == 1) send_UART_string("Zle\n");
+	if(is_registered(a) == false) send_UART_string("Jest w srodku");
+	while(1);
 	//flash_test();
 	//forever();
 }
@@ -44,8 +53,8 @@ void start(void)
 	setup_eint0();
 	setup_eint1();
 	int year, month, day, hour, min, sec;
-	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
-	RTC_Initialize(year, month, day, hour, min, sec);
+	//read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
+	//RTC_Initialize(year, month, day, hour, min, sec);
 	
 }
 
@@ -298,7 +307,7 @@ void EINT1_IRQHandler(void)
 } 
 
 
-/* Test dziala poprawnie, jesli on dziala to znaczy ze jest dobrze
+// Test dziala poprawnie, jesli on dziala to znaczy ze jest dobrze
 void flash_test(void)
 {
   uint32_t sector_number = 16;
@@ -319,5 +328,5 @@ void flash_test(void)
 	free(data_to_write);
 	free(read_buffer);
 }
-*/
+
 
