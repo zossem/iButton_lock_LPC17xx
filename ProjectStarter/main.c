@@ -94,8 +94,6 @@ void forever(void)
 					date[3]=currentTime.hour;
 					date[4]=currentTime.minute;
 					date[5]=currentTime.second;
-					date[6]=0xFF;
-					date[7]=0xFF;
 						
 					open_lock();
 					add_history(serial_number, date);
@@ -312,7 +310,7 @@ void EINT1_IRQHandler(void)
 // Test dziala poprawnie, jesli on dziala to znaczy ze jest dobrze
 void flash_test(void)
 {
-  uint32_t sector_number = 16;
+  	uint32_t sector_number = 16;
 	
 	uint8_t *data_to_write = (uint8_t*)malloc(sizeof(uint8_t) * 256);
 	char* zosia = "zosia";
