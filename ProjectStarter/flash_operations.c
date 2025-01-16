@@ -163,27 +163,20 @@ bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uin
     return true;  // Sukces
 }
 
-// Funkcja por�wnujaca dane
-bool verify_data(uint8_t *data, uint8_t *buffer, uint32_t size)
-{
-    for (uint32_t i = 0; i < size; i++)
-    {
-        if (data[i] != buffer[i])
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
 uint8_t get_number_of_registered(void)
 {
 	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t));
+    if (data == NULL)
+    {
+        return -1; // Memory allocation failed
+    }
+
     if (!read_from_flash(MAINTANANCE_REGISTER, data, sizeof(uint8_t), R_NUM_OFFSET)) 
     {
-        free(data);
-        return -1;
+        free(data); // Free allocated memory
+        return -1; // Reading from flash failed
     }
+
     return *data;
 }
 
@@ -194,12 +187,13 @@ int set_number_of_registered(uint8_t new_number)
     {
         return 1;
     }
+
     if (!read_from_flash(MAINTANANCE_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
     {
         free(data);
-		__enable_irq();
         return -1;
     }
+
     data[R_NUM_OFFSET] = new_number;
     if(!write_to_flash_sector(MAINTANANCE_REGISTER, data, 8*32)) 
     {
@@ -207,76 +201,141 @@ int set_number_of_registered(uint8_t new_number)
         return -1;
     }
     free(data);
+    return 0;
+}
+
+uint16_t get_history_entries(void)
+{
+    uint8_t *data = (uint8_t *)malloc(sizeof(uint16_t));
+    if (data == NULL)
+    {
+        return -1; // Memory allocation failed
+    }
+
+    if (!read_from_flash(MAINTANANCE_REGISTER, data, sizeof(uint16_t), H_NUM_OFFSET)) 
+    {
+        free(data);
+        return -1; // Reading from flash failed
+    }
+
+    uint16_t result = *((uint16_t *)data); // Convert the buffer data to uint16_t
+    free(data); // Free allocated memory
+    return result;
+}
+
+int set_history_entries(uint16_t new_number)
+{
+    uint8_t *data = (uint8_t *)malloc(8 * 32); // Allocate heap memory
+    if (data == NULL)
+    {
+        return 1; // Memory allocation failed
+    }
+
+    if (!read_from_flash(MAINTANANCE_REGISTER, data, 8 * 32, 0)) 
+    {
+        free(data);
+        return -1; // Reading from flash failed
+    }
+
+    // Update the uint16_t value at the appropriate offset
+    *((uint16_t *)(data + H_NUM_OFFSET)) = new_number;
+
+    if (!write_to_flash_sector(MAINTANANCE_REGISTER, data, 8 * 32)) 
+    {
+        free(data);
+        return -1; // Writing to flash failed
+    }
+
+    free(data);
+    return 0;
 }
 
 bool is_registered(uint8_t serial_number[]) 
 {
-	__disable_irq();
+    __disable_irq();
+
     uint8_t *read_number = (uint8_t *)malloc(8 * sizeof(uint8_t));
     if (read_number == NULL)
     {
-		__enable_irq();
-        return false;
+        __enable_irq();
+        return false; // Memory allocation failed
     }
-    uint8_t saved = get_number_of_registered(); //read from flash ilosc zapisanych
-    for (uint8_t i = 0; i < saved; i++)
-    { // Baza danych zawiera 32 numery po 8 bajtów
-        if(!read_from_flash(BUTTON_REGISTER, read_number, 8, i * 8)) break;
 
-        if (verify_data(serial_number, read_number, 8))
+    uint8_t saved = get_number_of_registered(); // Read from flash the number of saved entries
+    for (uint8_t i = 0; i < saved; i++)
+    {
+        // Read 8-byte serial number from flash for the current index
+        if (!read_from_flash(BUTTON_REGISTER, read_number, 8, i * 8))
+        {
+            break; // Stop if reading fails
+        }
+
+        // Compare the read number with the provided serial number
+        if (memcmp(serial_number, read_number, 8) == 0)
         {
             free(read_number);
-			__enable_irq();
-            return true;
+            __enable_irq();
+            return true; // Match found
         }
     }
+
     free(read_number);
-		__enable_irq();
-    return false;
+    __enable_irq();
+    return false; // Not found
 }
 
 void add_history(uint8_t serial_number[], uint8_t date[])
 {
 		__disable_irq();
+
 		__enable_irq();
 }
 
 int add_iButton(uint8_t serial_number[])
 {
 	__disable_irq();
-    uint8_t saved = get_number_of_registered(); //read from flash ilosc zapisanych
-    if (saved >= 32 || saved == -1)
+
+    uint8_t saved = get_number_of_registered(); // Read from flash the number of saved entries
+    if (saved >= 32 || saved == (uint8_t)-1)
     {
-		__enable_irq();
-        return 1;
+        __enable_irq();
+        return 1; // Maximum limit reached or error in reading
     }
-	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
+    
+	uint16_t data_size = sizeof(uint8_t) * 8 * 32;
+    uint8_t *data = (uint8_t *)malloc(data_size);
     if (data == NULL)
     {
-		__enable_irq();
-        return false;
+        __enable_irq();
+        return 1; // Memory allocation failed
     }
-    if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
+    
+    if (!read_from_flash(BUTTON_REGISTER, data, data_size, 0))
     {
         free(data);
-				__enable_irq();
-        return -1;
+        __enable_irq();
+        return -1; // Failed to read from flash
     }
-    for (uint8_t i = 0; i < 8; i++)
-    {
-        data[saved * 8 + i] = serial_number[i];
-    }
-    if(!write_to_flash_sector(BUTTON_REGISTER, data, 8*32)) 
+
+    memcpy(&data[saved * 8], serial_number, 8); // Copy serial number to the appropriate location
+
+    if (!write_to_flash_sector(BUTTON_REGISTER, data, data_size))
     {
         free(data);
-				__enable_irq();
-        return -1;
+        __enable_irq();
+        return -1; // Failed to write to flash
     }
+
     saved++;
-    set_number_of_registered(saved)
+    if (set_number_of_registered(saved) != 0)
+    {
+        free(data);
+        __enable_irq();
+        return -1; // Failed to update the count of registered numbers
+    }
     free(data);
-	__enable_irq();
-    return 0;
+    __enable_irq();
+    return 0; // Success
 }
 
 
@@ -289,51 +348,58 @@ void print_history()
 int delete_iButton(uint8_t serial_number[])
 {
     __disable_irq();
-    if (is_registered(serial_number) == false)
-		{
-			__enable_irq();
-			return 1;
-		}
-    uint8_t saved = 1; //read from flash ilosc zapisanych
-    bool removed = false;
-	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
-    if (!read_from_flash(BUTTON_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
-    {
-				__enable_irq();
-        free(data);
+
+    uint8_t saved = get_number_of_registered();
+    if (saved == (uint8_t)-1) {  // Error reading
+        __enable_irq();
         return -1;
     }
-    uint8_t count = 0;
-    while (!removed)
-    {
-        if(verify_data(data + count * 8, serial_number, 8))
-        {
-            removed = true;
-            for (uint8_t i = 0; i < 8; i++)
-            {
-                data[count + i] = 0xFF;
-            }
-        }
-        count++;
+    if (saved == 0 || !is_registered(serial_number)) {
+        __enable_irq();
+        return 1;  // Not found
     }
 
-    for (uint8_t i = count; i < saved - 1; i++)
-    {
-        for (uint8_t i = 0; i < 8; i++)
-        {
-            data[i] = data[i+8];
-        }
+    uint8_t *data = malloc(8 * 32);
+    if (!data) {
+        __enable_irq();
+        return -1;
     }
 
-    if(!write_to_flash_sector(BUTTON_REGISTER, data, 8*32)) 
-    {
+    if (!read_from_flash(BUTTON_REGISTER, data, 8 * 32, 0)) {
         free(data);
-				__enable_irq();
+        __enable_irq();
+        return -1;
+    }
+
+    bool found = false;
+    for (uint8_t i = 0; i < saved; i++) {
+        if (!found && if (memcmp(data + i * 8, serial_number, 8) == 0)) {
+            found = true;  // Mark as removed
+        }
+        if (found && i < saved - 1) {
+            // Shift data to fill the gap
+            memcpy(data + i * 8, data + (i + 1) * 8, 8);
+        }
+    }
+
+    if (!found) {
+        free(data);
+        __enable_irq();
+        return 1;
+    }
+
+    // Clear the last entry after shifting
+    memset(data + (saved - 1) * 8, 0xFF, 8);
+
+    if (!write_to_flash_sector(BUTTON_REGISTER, data, 8 * 32)) {
+        free(data);
+        __enable_irq();
         return -1;
     }
     
-		__enable_irq();
-    saved--; //zapisac do flash
+	free(data);
+    set_number_of_registered(saved - 1);
+    __enable_irq();
     return 0;
 }
 
