@@ -286,9 +286,58 @@ bool is_registered(uint8_t serial_number[])
 
 void add_history(uint8_t serial_number[], uint8_t date[])
 {
-		__disable_irq();
+	__disable_irq();
 
-		__enable_irq();
+    uint16_t saved = get_history_entries(); // Read from flash the number of saved entries
+    if (saved == (uint16_t)-1)
+    {
+        __enable_irq();
+        return 1; // Maximum limit reached or error in reading
+    }
+
+	uint16_t data_size = sizeof(uint8_t) * 8 * 8 * 256;
+    uint8_t *data = (uint8_t *)malloc(data_size);
+    if (data == NULL)
+    {
+        __enable_irq();
+        return 1; // Memory allocation failed
+    }
+    
+    if (!read_from_flash(HISTORY_REGISTER, data, data_size, 0))
+    {
+        free(data);
+        __enable_irq();
+        return -1; // Failed to read from flash
+    }
+
+    if (saved >= 256)
+    {
+        for (int i = 0; i < 256 - 1; i++){
+            memcpy(data + i * 16, data + (i + 1) * 16, 16);
+        }
+        memcpy(data + 255 * 16, serial_number, 8);
+        memcpy(data + 255 * 16 + 8, date, 8);
+    }
+    memcpy(data + saved * 16, serial_number, 8);
+    memcpy(data + saved * 16 + 8, date, 8);
+
+    if (!write_to_flash_sector(BUTTON_REGISTER, data, data_size))
+    {
+        free(data);
+        __enable_irq();
+        return -1; // Failed to write to flash
+    }
+
+    saved++;
+    if (set_number_of_registered(saved) != 0)
+    {
+        free(data);
+        __enable_irq();
+        return -1; // Failed to update the count of registered numbers
+    }
+    free(data);
+    __enable_irq();
+    return 0; // Success
 }
 
 int add_iButton(uint8_t serial_number[])
@@ -317,7 +366,7 @@ int add_iButton(uint8_t serial_number[])
         return -1; // Failed to read from flash
     }
 
-    memcpy(&data[saved * 8], serial_number, 8); // Copy serial number to the appropriate location
+    memcpy(data + saved * 8, serial_number, 8); // Copy serial number to the appropriate location
 
     if (!write_to_flash_sector(BUTTON_REGISTER, data, data_size))
     {

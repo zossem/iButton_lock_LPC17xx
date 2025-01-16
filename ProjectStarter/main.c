@@ -87,13 +87,15 @@ void forever(void)
 					Time currentTime;
 					// Read current time
 					currentTime = RTC_GetTime();
-					uint8_t date[6];
+					uint8_t date[8];
 					date[0]=currentTime.year;
 					date[1]=currentTime.month;
 					date[2]=currentTime.day;
 					date[3]=currentTime.hour;
 					date[4]=currentTime.minute;
 					date[5]=currentTime.second;
+					date[6]=0xFF;
+					date[7]=0xFF;
 						
 					open_lock();
 					add_history(serial_number, date);
