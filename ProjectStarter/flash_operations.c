@@ -21,6 +21,10 @@ bool erase_sector(uint32_t sector_number);
 bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size);
 // Funkcja odczytu danych z pamieci Flash
 bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uint32_t offset);
+//Funkcja ustawiajaca zapis sygnalizujacy ze juz istnieja dane w pamieci Flash
+int set_code(uint8_t* code);
+//Funkcja czyszczaca sektory przy inicjalizacji
+int clear_sectors(void);
 //Funkcja zwracająca ilosc zarejestrowanych pastylek
 uint8_t get_number_of_registered(void);
 //Funkcja ustawiajaca ilosc zarejestrowanych pastylek (0 success, 1 blad memory allocation, -1 blad flash)
@@ -29,6 +33,45 @@ int set_number_of_registered(uint8_t new_number);
 uint16_t get_history_entries(void);
 //Funkcja ustawiajaca ilosc wpisow w historii
 int set_history_entries(uint16_t new_number);
+
+int initialize_flash()
+{
+	__disable_irq();
+    uint8_t *code = (uint8_t *)malloc(8 * sizeof(uint8_t));
+    uint8_t password[8] = {0,1,2,3,4,5,6,7};
+    if (code == NULL)
+    {
+        __enable_irq();
+        return 1; // Memory allocation failed
+    }
+
+    if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(uint8_t) * 8, 0)) 
+    {
+        free(code);
+        return -1; // Reading from flash failed
+    }
+    
+    if (memcmp(code, password, 8) == 0){
+        free(code);
+        return 0;
+    }
+    prepare_sector(BUTTON_REGISTER);
+    erase_sector(BUTTON_REGISTER);
+    prepare_sector(MAINTANANCE_REGISTER);
+    erase_sector(MAINTANANCE_REGISTER);
+    prepare_sector(HISTORY_REGISTER);
+    erase_sector(HISTORY_REGISTER);
+
+
+    set_number_of_registered(0);
+    set_history_entries(0);
+    set_code(password);
+
+    free(code);
+	__enable_irq();
+    return 0;
+}
+
 
 bool is_registered(uint8_t serial_number[]) 
 {
@@ -266,12 +309,6 @@ int delete_iButton(uint8_t serial_number[])
     return 0;
 }
 
-void initialize_flash()
-{
-		__disable_irq();
-		__enable_irq();
-}
-
 bool prepare_sector(uint32_t sector_number)
 {
     unsigned int command[5];
@@ -394,6 +431,32 @@ int set_number_of_registered(uint8_t new_number)
         free(data);
         return -1;
     }
+    free(data);
+    return 0;
+}
+
+int set_code(uint8_t* code)
+{
+    uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * 8); // Allocate heap memory
+    if (data == NULL)
+    {
+        return 1; // Memory allocation failed
+    }
+
+    if (!read_from_flash(MAINTANANCE_REGISTER, data, 8 * 32, 0)) 
+    {
+        free(data);
+        return -1; // Reading from flash failed
+    }
+
+    memcpy(data, code, 8);
+
+    if (!write_to_flash_sector(MAINTANANCE_REGISTER, data, 8 * 32)) 
+    {
+        free(data);
+        return -1; // Writing to flash failed
+    }
+
     free(data);
     return 0;
 }
