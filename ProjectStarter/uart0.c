@@ -7,10 +7,11 @@
 LPC_UART_TypeDef * p_UART0=LPC_UART0;
 
 
-void UART0_Initialize(void)
+void UART2_Initialize(void)
 {
-	PIN_Configure(0, 2, PIN_FUNC_1, PIN_PINMODE_PULLUP, PIN_PINMODE_NORMAL); //TXD0
-	PIN_Configure(0, 3, PIN_FUNC_1, PIN_PINMODE_TRISTATE, PIN_PINMODE_NORMAL); //RXD0
+	LPC_SC->PCONP |= (1 << 24); //wlaczenie uart2 (tylko uart 0 po resecie dziala)
+	PIN_Configure(0, 10, PIN_FUNC_1, PIN_PINMODE_PULLUP, PIN_PINMODE_NORMAL); //TXD2
+	PIN_Configure(0, 11, PIN_FUNC_1, PIN_PINMODE_TRISTATE, PIN_PINMODE_NORMAL); //RXD2
 	
 	p_UART0->LCR=0x83; // 8 bits, 1 stop, no parity DLAB=1
 	p_UART0->DLM=0;
@@ -32,5 +33,10 @@ char read_UART_char(void)
 {
 	while(!(p_UART0->LSR & 0x01));  // check if The UART1 receiver FIFO is not empty.
 	char recived = p_UART0->RBR;
+	
+	char echo[1];
+	echo[0]=recived;
+	send_UART_string(echo);	//Printing recived char
+	
 	return recived;
 }

@@ -44,7 +44,7 @@ int main(void)
 void start(void)
 {
 	SystemInit(); //function configures the oscillator (PLL) 
-	UART0_Initialize();
+	UART2_Initialize();
 	SysTick_Initialize();// Flash Timeout po odblokowaniu
 	//(naprawione) przerwania przeszkadzaja flashowi, wiec w funkcjach na
 	//flashu trzeba je wylaczyc (wylaczylem tez na uarcie)
@@ -142,7 +142,7 @@ void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, i
 {
 		__disable_irq();
     char buffer[3];
-		send_UART_string("Podaj dzien w formacie YYMMDD:\r\n");
+		send_UART_string("Enter the day in YYMMDD format:\r\n");
 	
 		// Odczyt roku
     for (int i = 0; i < 2; i++) {
@@ -166,7 +166,7 @@ void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, i
     *day = my_atoi(buffer);
 
     // Wyslanie komunikatu do uzytkownika
-    send_UART_string("Podaj czas w formacie HHMMSS:\r\n");
+    send_UART_string("Enter the time in HHMMSS format:\r\n");
 
     // Odczyt godziny
     for (int i = 0; i < 2; i++) {
