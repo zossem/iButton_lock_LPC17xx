@@ -19,4 +19,8 @@ void RTC_Initialize(int year, int month, int day, int hour, int min, int sec);
 // Funkcja odczytujaca aktualny czas z RTC
 Time RTC_GetTime(void);
 
+//Funkcja do odczytania czasu podanego przez uzytkownika
+void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, int *sec);
+int my_atoi(const char *str);
+
 #endif

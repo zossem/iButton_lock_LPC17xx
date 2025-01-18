@@ -16,8 +16,6 @@
 void start(void);
 void forever(void);
 
-void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, int *sec);
-int my_atoi(const char *str);
 
 void setup_eint0(void); // Inicialize interrupts from key0
 void setup_eint1(void); // Inicialize interrupts from key1
@@ -138,68 +136,6 @@ void forever(void)
 	}	
 }
 
-void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, int *sec)
-{
-		__disable_irq();
-    char buffer[3];
-		send_UART_string("Enter the day in YYMMDD format:\r\n");
-	
-		// Odczyt roku
-    for (int i = 0; i < 2; i++) {
-        buffer[i] = read_UART_char();
-    }
-    buffer[2] = '\0';
-    *year = 2000 + my_atoi(buffer);
-
-    // Odczyt miesiaca
-    for (int i = 0; i < 2; i++) {
-        buffer[i] = read_UART_char();
-    }
-    buffer[2] = '\0';
-    *month = my_atoi(buffer);
-
-    // Odczyt sekund
-    for (int i = 0; i < 2; i++) {
-        buffer[i] = read_UART_char();
-    }
-    buffer[2] = '\0';
-    *day = my_atoi(buffer);
-
-    // Wyslanie komunikatu do uzytkownika
-    send_UART_string("Enter the time in HHMMSS format:\r\n");
-
-    // Odczyt godziny
-    for (int i = 0; i < 2; i++) {
-        buffer[i] = read_UART_char();
-    }
-    buffer[2] = '\0';
-    *hour = my_atoi(buffer);
-
-    // Odczyt minut
-    for (int i = 0; i < 2; i++) {
-        buffer[i] = read_UART_char();
-    }
-    buffer[2] = '\0';
-    *min = my_atoi(buffer);
-
-    // Odczyt sekund
-    for (int i = 0; i < 2; i++) {
-        buffer[i] = read_UART_char();
-    }
-    buffer[2] = '\0';
-    *sec = my_atoi(buffer);
-		__enable_irq();
-}
-
-int my_atoi(const char *str)
-{
-    int result = 0;
-    while (*str) {
-        result = result * 10 + (*str - '0');
-        str++;
-    }
-    return result;
-}
 
 void setup_eint0(void) 
 {
