@@ -133,7 +133,7 @@ void forever(void)
 				send_UART_string("CRC is incorrect\n\r");
 		}
 		
-		delay_us(5000000);
+		delay_us(1000000);
 		
 	}	
 }
@@ -283,7 +283,7 @@ void EINT1_IRQHandler(void)
 					send_UART_string("CRC is incorrect\n\r");
 				}
 				
-				delay_us(10000000); //Wait 1 s
+				delay_us(1000000); //Wait 1 s
 			}
 
 			if(is_present)
