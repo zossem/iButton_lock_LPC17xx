@@ -10,7 +10,7 @@ IAP iap_entry = (IAP) IAP_LOCATION;
 #define SYSTEM_CLOCK_KHZ (SystemCoreClock / 1000)
 
 //Funkcja wysylajaca na uart0 tekstowe rozwiniecie bledu IAP
-void send_error_uart0(unsigned int *n);
+void send_error_uart0(unsigned int n);
 // Funkcja wyliczajaca adres sektora Flash na podstawie jego numeru
 uint32_t get_flash_sector_address(uint32_t sector_number);
 //funkcja przygotowujaca sektor pamieci Flash
@@ -34,27 +34,27 @@ uint16_t get_history_entries(void);
 //Funkcja ustawiajaca ilosc wpisow w historii
 int set_history_entries(uint16_t new_number);
 
+int add_history(uint8_t serial_number[], uint8_t date[]);
+int print_history();
+
 int initialize_flash()
 {
 	__disable_irq();
-    uint8_t *code = (uint8_t *)malloc(8 * sizeof(uint8_t));
+    uint8_t code[8];
     uint8_t password[8] = {0,1,2,3,4,5,6,7};
-    if (code == NULL)
+    
+    if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(code), 0)) 
     {
-        __enable_irq();
-        return 1; // Memory allocation failed
-    }
-
-    if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(uint8_t) * 8, 0)) 
-    {
-        free(code);
-        return -1; // Reading from flash failed
+       __enable_irq();
+       return -1; // Reading from flash failed
     }
     
-    if (memcmp(code, password, 8) == 0){
-        free(code);
-        return 0;
+    if (memcmp(code, password, 8) == 0)
+    {
+       __enable_irq();
+       return 0;
     }
+    
     prepare_sector(BUTTON_REGISTER);
     erase_sector(BUTTON_REGISTER);
     prepare_sector(MAINTANANCE_REGISTER);
@@ -67,7 +67,6 @@ int initialize_flash()
     set_history_entries(0);
     set_code(password);
 
-    free(code);
 	__enable_irq();
     return 0;
 }
@@ -76,20 +75,14 @@ int initialize_flash()
 bool is_registered(uint8_t serial_number[]) 
 {
     __disable_irq();
+    uint8_t read_number[8];
 
-    uint8_t *read_number = (uint8_t *)malloc(8 * sizeof(uint8_t));
-    if (read_number == NULL)
-    {
-        __enable_irq();
-        return false; // Memory allocation failed
-    }
-
+    
     uint8_t saved = get_number_of_registered(); // Read from flash the number of saved entries
     if (saved == (uint8_t)-1)
     {
-        __enable_irq();
-        free(read_number);
-        return 1; // Maximum limit reached or error in reading
+        __enable_irq();    
+        return false; // Maximum limit reached or error in reading
     }
     for (uint8_t i = 0; i < saved; i++)
     {
@@ -102,18 +95,16 @@ bool is_registered(uint8_t serial_number[])
         // Compare the read number with the provided serial number
         if (memcmp(serial_number, read_number, 8) == 0)
         {
-            free(read_number);
             __enable_irq();
             return true; // Match found
         }
     }
 
-    free(read_number);
     __enable_irq();
     return false; // Not found
 }
 
-void add_history(uint8_t serial_number[], uint8_t date[])
+int add_history(uint8_t serial_number[], uint8_t date[])
 {
 	__disable_irq();
 
@@ -124,12 +115,11 @@ void add_history(uint8_t serial_number[], uint8_t date[])
         return 1; // Maximum limit reached or error in reading
     }
 
-	uint16_t data_size = sizeof(uint8_t) * 8 * 8 * 256;
+	 uint16_t data_size = sizeof(uint8_t) * 16 * 256; // 256 slotów 16 bajtowych
     uint8_t *data = (uint8_t *)malloc(data_size);
     if (data == NULL)
     {
         __enable_irq();
-        free(data)
         return 1; // Memory allocation failed
     }
     
@@ -142,12 +132,16 @@ void add_history(uint8_t serial_number[], uint8_t date[])
 
     if (saved >= 256)
     {
-        for (int i = 0; i < 256 - 1; i++){
-            memcpy(data + i * 16, data + (i + 1) * 16, 16);
+        for (int i = 1; i<=255 ; i++)
+        {
+            memcpy(data + (i-1) * 16, data + i * 16, 16); // przepisz 1 -> 0, 2 -> 1
         }
+        
         memcpy(data + 255 * 16, serial_number, 8);
         memcpy(data + 255 * 16 + 8, date, 6);
     }
+    
+    
     memcpy(data + saved * 16, serial_number, 8);
     memcpy(data + saved * 16 + 8, date, 6);
 
@@ -157,14 +151,18 @@ void add_history(uint8_t serial_number[], uint8_t date[])
         free(data);
         return -1; // Failed to write to flash
     }
-
-    saved++;
-    if (set_number_of_registered(saved) != 0)
+    if (saved < 256)
     {
-        __enable_irq();
-        free(data);
-        return -1; // Failed to update the count of registered numbers
+      saved++;
+   
+       if (set_number_of_registered(saved) != 0)
+       {
+           __enable_irq();
+           free(data);
+           return -1; // Failed to update the count of registered numbers
+       }
     }
+    
     __enable_irq();
     free(data);
     return 0; // Success
@@ -181,7 +179,7 @@ int add_iButton(uint8_t serial_number[])
         return 1; // Maximum limit reached or error in reading
     }
     
-	uint16_t data_size = sizeof(uint8_t) * 8 * 32;
+	 uint16_t data_size = sizeof(uint8_t) * 8 * 32;
     uint8_t *data = (uint8_t *)malloc(data_size);
     if (data == NULL)
     {
@@ -217,26 +215,20 @@ int add_iButton(uint8_t serial_number[])
     return 0; // Success
 }
 
-void print_history()
+int print_history()
 {
     __disable_irq();
 
-    uint8_t *data = (uint8_t *)malloc((14 + 1) * sizeof(uint8_t));
-    if (data == NULL)
-    {
-        __enable_irq();
-        return false; // Memory allocation failed
-    }
-
+    uint8_t data[15];
+    
     uint16_t saved = get_history_entries(); // Read from flash the number of saved entries
     if (saved == (uint16_t)-1 || saved > 256) {  // Error reading
         __enable_irq();
-        free(data);
-        return -1;
+            return -1;
     }
 
     for (int i = 0; i < saved; i++){
-        if (!read_from_flash(HISTORY_REGISTER, data, 8, 14 * 16))
+        if (!read_from_flash(HISTORY_REGISTER, data, 14))
         {
             break; // Stop if reading fails
         }
@@ -263,8 +255,8 @@ int delete_iButton(uint8_t serial_number[])
         return 1;  // Not found
     }
 
-    uint8_t *data = malloc(8 * 32);
-    if (data = NULL) {
+    uint8_t *data = malloc(sizeof(uint8_t) * 8 * 32);
+    if (data == NULL) {
         __enable_irq();
         return -1;
     }
@@ -277,7 +269,8 @@ int delete_iButton(uint8_t serial_number[])
     }
 
     bool found = false;
-    for (uint8_t i = 0; i < saved; i++) {
+    for (uint8_t i = 0; i < saved; i++) 
+    {
         if (!found && (memcmp(data + i * 8, serial_number, 8) == 0)) {
             found = true;  // Mark as removed
         }
@@ -314,15 +307,16 @@ bool prepare_sector(uint32_t sector_number)
     unsigned int command[5];
     unsigned int result[5];
     command[0] = 50;  // Prepare Sector
-    command[1] = sector_number;  // Numer sektora
-    command[2] = sector_number;  // Numer sektora (tylko jeden sektor)
+    command[1] = sector_number;  // Numer sektora startowego 
+    command[2] = sector_number;  // Numer sektora koncowego (tylko jeden sektor)
     iap_entry(command, result);
     if (result[0] != 0)
     {
-		send_error_uart0(result);
-        return false;  // Obsluga bledu
+       send_error_uart0(result);
+        return false;  // blad
     }
-	send_UART_string("prepare success\n");
+    
+    send_UART_string("prepare success\n");
     return true; // Sukces
 }
 
@@ -331,8 +325,8 @@ bool erase_sector(uint32_t sector_number)
     unsigned int command[5];
     unsigned int result[5];
     command[0] = 52;  // Erase Sector
-    command[1] = sector_number;  // Numer sektora
-    command[2] = sector_number;  // Numer sektora (tylko jeden sektor
+    command[1] = sector_number;  // Numer sektora startowego
+    command[2] = sector_number;  // Numer sektora koncowego (tylko jeden sektor)
     command[3] = SYSTEM_CLOCK_KHZ; // Czestotliwosc zegara w kHz
     iap_entry(command, result);
     if (result[0] != 0)
@@ -437,7 +431,7 @@ int set_number_of_registered(uint8_t new_number)
 
 int set_code(uint8_t* code)
 {
-    uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * 8); // Allocate heap memory
+    uint8_t data = (uint8_t *)malloc(sizeof(uint8_t) * 8 * 32); // Allocate heap memory
     if (data == NULL)
     {
         return 1; // Memory allocation failed
@@ -463,26 +457,19 @@ int set_code(uint8_t* code)
 
 uint16_t get_history_entries(void)
 {
-    uint8_t *data = (uint8_t *)malloc(sizeof(uint16_t));
-    if (data == NULL)
-    {
-        return -1; // Memory allocation failed
-    }
-
+    uint16_t data;
+    
     if (!read_from_flash(MAINTANANCE_REGISTER, data, sizeof(uint16_t), H_NUM_OFFSET)) 
     {
-        free(data);
-        return -1; // Reading from flash failed
+       return -1; // Reading from flash failed
     }
 
-    uint16_t result = *((uint16_t *)data); // Convert the buffer data to uint16_t
-    free(data); // Free allocated memory
-    return result;
+    return data;
 }
 
 int set_history_entries(uint16_t new_number)
 {
-    uint8_t *data = (uint8_t *)malloc(8 * 32); // Allocate heap memory
+    uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * 8 * 32); // Allocate heap memory
     if (data == NULL)
     {
         return 1; // Memory allocation failed
@@ -523,9 +510,9 @@ uint32_t get_flash_sector_address(uint32_t sector_number)
     }
 }
 
-void send_error_uart0(unsigned int *n)
+void send_error_uart0(unsigned int n)
 {
-    switch (*n)
+    switch (n)
     {
     case 1:
         send_UART_string("INVALID_COMMAND\n");
