@@ -458,7 +458,7 @@ uint8_t get_number_of_registered(void)
         return -1;
     }
 		
-    char str[12];
+    char str[30];
     sprintf(str, "get num reg saved:%d\n", data[R_NUM_OFFSET]);
     send_UART_string(str);
     return data[R_NUM_OFFSET];
