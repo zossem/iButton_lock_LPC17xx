@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 #include "one_wire.h"
 #include "uart0.h"
 #include "SysTick_timer.h"
@@ -16,7 +15,6 @@
 void start(void);
 void forever(void);
 
-
 void setup_eint0(void); // Inicialize interrupts from key0
 void setup_eint1(void); // Inicialize interrupts from key1
 
@@ -26,17 +24,7 @@ void flash_test(void);
 int main(void)
 {
 	start();
-	uint8_t a[8] = {0,1,2,3,4,5,6,7} ;
-	if(add_iButton(a) == 0) send_UART_string("Zapisalo\n");
-	if(is_registered(a) == true) send_UART_string("Jest w srodku\n");
-	int out = delete_iButton(a);
-	if(out == 0) send_UART_string("Usuniety\n");
-	if(out == -1) send_UART_string("Bardzo zle\n");
-	if(out == 1) send_UART_string("Zle\n");
-	if(is_registered(a) == false) send_UART_string("Jest w srodku");
-	while(1);
-	//flash_test();
-	//forever();
+	forever();
 }
 
 void start(void)
@@ -47,19 +35,19 @@ void start(void)
 	//(naprawione) przerwania przeszkadzaja flashowi, wiec w funkcjach na
 	//flashu trzeba je wylaczyc (wylaczylem tez na uarcie)
 	mode_Initialize();
-	//lock_Initialize();// Nachodzi na piny uart0 (do poprawy)
+	lock_Initialize();// Nachodzi na piny uart0 (do poprawy)
 	setup_eint0();
 	setup_eint1();
+	initialize_flash();
 	int year, month, day, hour, min, sec;
-	//read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
-	//RTC_Initialize(year, month, day, hour, min, sec);
+	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
+	RTC_Initialize(year, month, day, hour, min, sec);
 	
 }
 
 void forever(void)
 {
 	char bfr[31];
-	
 	
 	while (true)
 	{
@@ -241,28 +229,3 @@ void EINT1_IRQHandler(void)
 		}		
 	}
 } 
-
-
-// Test dziala poprawnie, jesli on dziala to znaczy ze jest dobrze
-void flash_test(void)
-{
-  	uint32_t sector_number = 16;
-	
-	uint8_t *data_to_write = (uint8_t*)malloc(sizeof(uint8_t) * 256);
-	char* zosia = "zosia";
-	for(int i = 0; zosia[i] != '\0'; i++)
-	{
-		data_to_write[i] = zosia[i];
-		data_to_write[i+1] = '\0';
-	}
-	write_to_flash_sector(sector_number, data_to_write, 256);
-	
-	uint8_t *read_buffer = (uint8_t*)malloc(sizeof(uint8_t) * 256);
-	read_from_flash(sector_number, read_buffer, 256, 0);
-	send_UART_string((char*)read_buffer);
-	
-	free(data_to_write);
-	free(read_buffer);
-}
-
-

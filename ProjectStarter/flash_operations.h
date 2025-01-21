@@ -18,6 +18,7 @@
 #define R_NUM_OFFSET 8 //number of registered capsule offset in memory
 #define H_NUM_OFFSET 16 //number of history entries offset in memory
 
+void flash_test(void);
 //Checks wheather flash already has data, if not, then prepares everything for the use
 void initialize_flash();
 
