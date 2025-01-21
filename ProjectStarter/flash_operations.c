@@ -10,7 +10,7 @@ IAP iap_entry = (IAP) IAP_LOCATION;
 #define SYSTEM_CLOCK_KHZ (SystemCoreClock / 1000)
 
 //Funkcja wysylajaca na uart0 tekstowe rozwiniecie bledu IAP
-void send_error_uart0(unsigned int *n);
+void send_error_uart(unsigned int *n);
 // Funkcja wyliczajaca adres sektora Flash na podstawie jego numeru
 uint32_t get_flash_sector_address(uint32_t sector_number);
 //funkcja przygotowujaca sektor pamieci Flash
@@ -55,18 +55,20 @@ void flash_test(void)
 	free(data_to_write);
 	free(read_buffer);
 }
-void zrob_syf(void)
+void override_code(void)
 {
 	__disable_irq();
 	uint8_t password[8] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 	uint8_t *data = malloc(8 * 32);
     if (data == NULL) {
+        send_UART_string("mem failed\n");
         __enable_irq();
         return;
     }
 
     if (!read_from_flash(BUTTON_REGISTER, data, 8 * 32, 0))
     {
+        send_UART_string("read flash failed\n");
         __enable_irq();
         free(data);
         return;
@@ -79,22 +81,26 @@ void zrob_syf(void)
 
 int initialize_flash(void)
 {
-		__disable_irq();
+    send_UART_string("flash init: ");
+	__disable_irq();
     uint8_t *code = (uint8_t *)malloc(8 * sizeof(uint8_t));
-    uint8_t password[8] = {0,1,2,3,4,5,6,7};
+    uint8_t password[8] = {3,1,2,3,4,5,6,7};
     if (code == NULL)
     {
+        send_UART_string("mem failed\n");
         __enable_irq();
         return 1; // Memory allocation failed
     }
 
     if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(uint8_t) * 8, 0)) 
     {
+        send_UART_string("read flash failed\n");
         free(code);
         return -1; // Reading from flash failed
     }
     
     if (memcmp(code, password, 8) == 0){
+        send_UART_string("code present\n");
         free(code);
         return 0;
     }
@@ -105,12 +111,11 @@ int initialize_flash(void)
     prepare_sector(HISTORY_REGISTER);
     erase_sector(HISTORY_REGISTER);
 
-
     set_number_of_registered(0);
     set_history_entries(0);
     set_code(password);
 		
-
+    send_UART_string("code added\n");
     free(code);
 	__enable_irq();
     return 0;
@@ -119,13 +124,14 @@ int initialize_flash(void)
 
 bool is_registered(uint8_t serial_number[]) 
 {
+    send_UART_string("is_reg: ");
     __disable_irq();
 
     uint8_t *read_number = (uint8_t *)malloc(8 * sizeof(uint8_t));
     if (read_number == NULL)
     {
         __enable_irq();
-				send_UART_string("M_AL_FAILED");
+        send_UART_string("mem failed\n");
         return false; // Memory allocation failed
     }
 
@@ -134,7 +140,6 @@ bool is_registered(uint8_t serial_number[])
     {
         __enable_irq();
         free(read_number);
-				send_UART_string("LIMIT_REACHED");
         return false; // Maximum limit reached or error in reading
     }
     for (uint8_t i = 0; i < saved; i++)
@@ -142,7 +147,7 @@ bool is_registered(uint8_t serial_number[])
         // Read 8-byte serial number from flash for the current index
         if (!read_from_flash(BUTTON_REGISTER, read_number, 8, i * 8))
         {
-					send_UART_string("READ_FAILED");
+            send_UART_string("read flash failed\n");
             break; // Stop if reading fails
         }
 
@@ -151,12 +156,12 @@ bool is_registered(uint8_t serial_number[])
         {
             free(read_number);
             __enable_irq();
-					send_UART_string("IBUT IS REGISTERED");
+            send_UART_string("found\n");
             return true; // Match found
         }
     }
 
-	send_UART_string("IBUT NOT FOUND");
+	send_UART_string("not found");
     free(read_number);
     __enable_irq();
     return false; // Not found
@@ -164,19 +169,22 @@ bool is_registered(uint8_t serial_number[])
 
 int add_history(uint8_t serial_number[], uint8_t date[])
 {
+    send_UART_string("add_his: ");
 	__disable_irq();
 
     uint16_t saved = get_history_entries(); // Read from flash the number of saved entries
     if (saved == (uint16_t)-1)
     {
+        send_UART_string("\n");
         __enable_irq();
-        return 1; // Maximum limit reached or error in reading
+        return 1;
     }
 
 	uint16_t data_size = sizeof(uint8_t) * 8 * 8 * 256;
     uint8_t *data = (uint8_t *)malloc(data_size);
     if (data == NULL)
     {
+        send_UART_string("mem failed\n");
         __enable_irq();
         free(data);
         return 1; // Memory allocation failed
@@ -184,6 +192,7 @@ int add_history(uint8_t serial_number[], uint8_t date[])
     
     if (!read_from_flash(HISTORY_REGISTER, data, data_size, 0))
     {
+        send_UART_string("read flash failed\n");
         __enable_irq();
         free(data);
         return -1; // Failed to read from flash
@@ -194,14 +203,14 @@ int add_history(uint8_t serial_number[], uint8_t date[])
         for (int i = 0; i < 256 - 1; i++){
             memcpy(data + i * 16, data + (i + 1) * 16, 16);
         }
-        memcpy(data + 255 * 16, serial_number, 8);
-        memcpy(data + 255 * 16 + 8, date, 6);
+        memcpy(data + 255 * 16, serial_number, 16);
     }
     memcpy(data + saved * 16, serial_number, 8);
     memcpy(data + saved * 16 + 8, date, 6);
 
     if (!write_to_flash_sector(BUTTON_REGISTER, data, data_size))
     {
+        send_UART_string("write flash failed\n");
         __enable_irq();
         free(data);
         return -1; // Failed to write to flash
@@ -214,6 +223,7 @@ int add_history(uint8_t serial_number[], uint8_t date[])
         free(data);
         return -1; // Failed to update the count of registered numbers
     }
+    send_UART_string("success\n");
     __enable_irq();
     free(data);
     return 0; // Success
@@ -221,12 +231,14 @@ int add_history(uint8_t serial_number[], uint8_t date[])
 
 int add_iButton(uint8_t serial_number[])
 {
+	send_UART_string("add_iB:");
 	__disable_irq();
-
     uint8_t saved = get_number_of_registered(); // Read from flash the number of saved entries
+    
     if (saved >= 32 || saved == (uint8_t)-1)
     {
         __enable_irq();
+	    send_UART_string("max_num_reg");
         return 1; // Maximum limit reached or error in reading
     }
     
@@ -234,12 +246,14 @@ int add_iButton(uint8_t serial_number[])
     uint8_t *data = (uint8_t *)malloc(data_size);
     if (data == NULL)
     {
+        send_UART_string("mem failed\n");
         __enable_irq();
         return 1; // Memory allocation failed
     }
     
     if (!read_from_flash(BUTTON_REGISTER, data, data_size, 0))
     {
+        send_UART_string("read flash failed\n");
         __enable_irq();
         free(data);
         return -1; // Failed to read from flash
@@ -249,6 +263,7 @@ int add_iButton(uint8_t serial_number[])
 
     if (!write_to_flash_sector(BUTTON_REGISTER, data, data_size))
     {
+        send_UART_string("write flash failed\n");
         __enable_irq();
         free(data);
         return -1; // Failed to write to flash
@@ -259,6 +274,7 @@ int add_iButton(uint8_t serial_number[])
         free(data);
         return -1; // Failed to update the count of registered numbers
     }
+    send_UART_string("success\n");
     __enable_irq();
     free(data);
     return 0; // Success
@@ -267,11 +283,13 @@ int add_iButton(uint8_t serial_number[])
 int print_history()
 {
     __disable_irq();
+    send_UART_string("print_his: ");
 
     uint8_t *data = (uint8_t *)malloc((14 + 1) * sizeof(uint8_t));
     if (data == NULL)
     {
         __enable_irq();
+        send_UART_string("mem failed\n");
         return false; // Memory allocation failed
     }
 
@@ -283,14 +301,17 @@ int print_history()
     }
 
     for (int i = 0; i < saved; i++){
-        if (!read_from_flash(HISTORY_REGISTER, data, 8, 14 * 16))
+        if (!read_from_flash(HISTORY_REGISTER, data, 14, i * 16))
         {
+            send_UART_string("read flash failed\n");
             break; // Stop if reading fails
         }
 		data[14] = '\0';
         send_UART_string((char*)data);
+        send_UART_string("\n");
     }
 
+    send_UART_string("success");
     __enable_irq();
     free(data);
     return false; // Not found
@@ -298,24 +319,28 @@ int print_history()
 
 int delete_iButton(uint8_t serial_number[])
 {
+	send_UART_string("del_iB:");
     __disable_irq();
     uint8_t saved = get_number_of_registered();
-	send_UART_string("R_s\n");
 	
     if (saved == (uint8_t)-1) {  // Error reading
         __enable_irq();
         return -1;
     }
-    if(saved == 0) send_UART_string("deledte saved erroe:0\n");
-    if(!is_registered(serial_number)) send_UART_string("not reg\n");
-		
-    if (saved == 0 || !is_registered(serial_number)) {
+    if(saved == 0) {
+        send_UART_string("no buttons registered\n");
+        __enable_irq();
+        return 1;  // Not found
+    }
+    if(!is_registered(serial_number)){
+        send_UART_string("iB not registered\n");
         __enable_irq();
         return 1;  // Not found
     }
 
     uint8_t *data = malloc(8 * 32);
     if (data == NULL) {
+        send_UART_string("mem failed\n");
         __enable_irq();
         return -1;
     }
@@ -324,6 +349,7 @@ int delete_iButton(uint8_t serial_number[])
     {
         __enable_irq();
         free(data);
+        send_UART_string("read flash failed\n");
         return -1;
     }
 
@@ -336,32 +362,38 @@ int delete_iButton(uint8_t serial_number[])
             // Shift data to fill the gap
             memcpy(data + i * 8, data + (i + 1) * 8, 8);
         }
+        if (found && i == (saved - 1)) {
+            // Clear the last entry after shifting
+            memset(data + (saved - 1) * 8, 0xFF, 8);
+        }
     }
 
     if (!found) {
         __enable_irq();
         free(data);
+        send_UART_string("found not removed\n");
         return 1;
     }
 
-    // Clear the last entry after shifting
-    memset(data + (saved - 1) * 8, 0xFF, 8);
 
     if (!write_to_flash_sector(BUTTON_REGISTER, data, 8 * 32))
     {
         __enable_irq();
         free(data);
+        send_UART_string("write flash failed\n");
         return -1;
     }
     
 	free(data);
     set_number_of_registered(saved - 1);
+    send_UART_string("success\n");
     __enable_irq();
     return 0;
 }
 
 bool prepare_sector(uint32_t sector_number)
 {
+	  send_UART_string("prepare_sec: ");
     unsigned int command[5];
     unsigned int result[5];
     command[0] = 50;  // Prepare Sector
@@ -370,14 +402,16 @@ bool prepare_sector(uint32_t sector_number)
     iap_entry(command, result);
     if (result[0] != 0)
     {
-		send_error_uart0(result);
+		send_error_uart(result);
         return false;  // Obsluga bledu
     }
+		send_UART_string("success");
     return true; // Sukces
 }
 
 bool erase_sector(uint32_t sector_number)
 {
+		send_UART_string("erase_sec: ");
     unsigned int command[5];
     unsigned int result[5];
     command[0] = 52;  // Erase Sector
@@ -387,19 +421,22 @@ bool erase_sector(uint32_t sector_number)
     iap_entry(command, result);
     if (result[0] != 0)
     {
-		send_error_uart0(result);
+		send_error_uart(result);
         return false;
     }
+		send_UART_string("success");
     return true; // Sukces
 }
 
 
 bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uint32_t offset)
 {
+    send_UART_string("read flash: ");
     // Oblicz adres startowy sektora
     uint32_t flash_address = get_flash_sector_address(sector_number);
     if (flash_address == 0xFFFFFFFF)
     {
+        send_UART_string("wrong sector\n");
         // Blad: nieprawidlowy numer sektora
         return false;
     }
@@ -408,11 +445,13 @@ bool read_from_flash(uint32_t sector_number, uint8_t *buffer, uint32_t size, uin
     { // Kopiowanie danych z pamieci Flash do bufora
         buffer[i] = *((volatile uint8_t *)(flash_address + i));
     }
+    send_UART_string("success\n");
     return true;  // Sukces
 }
 
 bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
 {
+    send_UART_string("write flash: ");
     unsigned int command[5];
     unsigned int result[5];
     
@@ -420,12 +459,13 @@ bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
     if (flash_address == 0xFFFFFFFF)
     {
         // Blad: nieprawidlowy numer sektora
+        send_UART_string("wrong sector\n");
         return false;
     }
 		
 	if (size > 4096 || size % 256 != 0)
     {
-        send_UART_string("Error: Data size invalid.\n");
+        send_UART_string("data size invalid.\n");
         return false;
     }
 
@@ -442,41 +482,45 @@ bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
     iap_entry(command, result);
     if (result[0] != 0)
 	{
-	    send_error_uart0(result);
+	    send_error_uart(result);
         return false;  // Obsluga bledu
     }
-	send_UART_string("w_s\n");
+	send_UART_string("success\n");
     return true;  // Sukces
 }
 
 uint8_t get_number_of_registered(void)
 {
+    send_UART_string("get_nr_reg: ");
     uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
     if (!read_from_flash(MAINTANANCE_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
     {
         free(data);
+        send_UART_string("read flash failed\n");
         return -1;
     }
-		
-    char str[30];
-    sprintf(str, "get num reg saved:%d\n", data[R_NUM_OFFSET]);
-    send_UART_string(str);
-    return data[R_NUM_OFFSET];
+    uint8_t result = data[R_NUM_OFFSET];
+    free(data);
+    send_UART_string("success\n");
+    return result;
 		
 }
 
 int set_number_of_registered(uint8_t new_number)
 {
+    send_UART_string("set_nr_reg: ");
 	uint8_t *data = (uint8_t*)malloc(sizeof(uint8_t) * 8 * 32);
 	
     if (data == NULL)
     {
+        send_UART_string("mem failed\n");
         return 1;
     }
 
     if (!read_from_flash(MAINTANANCE_REGISTER, data, sizeof(uint8_t) * 8 * 32, 0)) 
     {
         free(data);
+        send_UART_string("read flash failed\n");
         return -1;
     }
 
@@ -485,23 +529,28 @@ int set_number_of_registered(uint8_t new_number)
     if(!write_to_flash_sector(MAINTANANCE_REGISTER, data, 8*32)) 
     {
         free(data);
+        send_UART_string("write flash failed\n");
         return -1;
     }
     free(data);
+    send_UART_string("success\n");
     return 0;
 }
 
 int set_code(uint8_t* code)
 {
+    send_UART_string("set_code: ");
     uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * 8); // Allocate heap memory
     if (data == NULL)
     {
+        send_UART_string("mem failed\n");
         return 1; // Memory allocation failed
     }
 
     if (!read_from_flash(MAINTANANCE_REGISTER, data, 8 * 32, 0)) 
     {
         free(data);
+        send_UART_string("read flash failed\n");
         return -1; // Reading from flash failed
     }
 
@@ -510,43 +559,52 @@ int set_code(uint8_t* code)
     if (!write_to_flash_sector(MAINTANANCE_REGISTER, data, 8 * 32)) 
     {
         free(data);
+        send_UART_string("write flash failed\n");
         return -1; // Writing to flash failed
     }
 
     free(data);
+    send_UART_string("success\n");
     return 0;
 }
 
 uint16_t get_history_entries(void)
 {
+    send_UART_string("get_hist_ent: ");
     uint8_t *data = (uint8_t *)malloc(sizeof(uint16_t));
     if (data == NULL)
     {
+        send_UART_string("mem failed\n");
         return -1; // Memory allocation failed
     }
 
     if (!read_from_flash(MAINTANANCE_REGISTER, data, sizeof(uint16_t), H_NUM_OFFSET)) 
     {
         free(data);
+        send_UART_string("read flash failed\n");
         return -1; // Reading from flash failed
     }
 
     uint16_t result = *((uint16_t *)data); // Convert the buffer data to uint16_t
     free(data); // Free allocated memory
+    send_UART_string("success\n");
     return result;
 }
 
 int set_history_entries(uint16_t new_number)
 {
+    send_UART_string("set_hist_ent: ");
     uint8_t *data = (uint8_t *)malloc(8 * 32); // Allocate heap memory
     if (data == NULL)
     {
+        send_UART_string("mem failed\n");
         return 1; // Memory allocation failed
     }
 
     if (!read_from_flash(MAINTANANCE_REGISTER, data, 8 * 32, 0)) 
     {
         free(data);
+        send_UART_string("read flash failed\n");
         return -1; // Reading from flash failed
     }
 
@@ -556,10 +614,12 @@ int set_history_entries(uint16_t new_number)
     if (!write_to_flash_sector(MAINTANANCE_REGISTER, data, 8 * 32)) 
     {
         free(data);
+        send_UART_string("write flash failed\n");
         return -1; // Writing to flash failed
     }
 
     free(data);
+    send_UART_string("success\n");
     return 0;
 }
 
@@ -579,7 +639,7 @@ uint32_t get_flash_sector_address(uint32_t sector_number)
     }
 }
 
-void send_error_uart0(unsigned int *n)
+void send_error_uart(unsigned int *n)
 {
     switch (*n)
     {
