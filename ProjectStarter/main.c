@@ -18,12 +18,23 @@ void forever(void);
 void setup_eint0(void); // Inicialize interrupts from key0
 void setup_eint1(void); // Inicialize interrupts from key1
 
-void flash_test(void);
-
+void flashtest()
+{
+	uint8_t serial[8] = {3,1,3,1,3,1,3,2};
+	is_registered(serial);
+	add_iButton(serial);
+	is_registered(serial);
+	delete_iButton(serial);
+	is_registered(serial);
+	uint8_t dat[6] = {1,1,1,2,2,2};
+	add_history(serial, dat);
+	print_history();
+}
 
 int main(void)
 {
 	start();
+	//flashtest();
 	forever();
 }
 
@@ -31,6 +42,7 @@ void start(void)
 {
 	SystemInit(); //function configures the oscillator (PLL) 
 	UART2_Initialize();
+	send_UART_string("\n\n");
 	SysTick_Initialize();// Flash Timeout po odblokowaniu
 	//(naprawione) przerwania przeszkadzaja flashowi, wiec w funkcjach na
 	//flashu trzeba je wylaczyc (wylaczylem tez na uarcie)
@@ -42,7 +54,6 @@ void start(void)
 	int year, month, day, hour, min, sec;
 	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
 	RTC_Initialize(year, month, day, hour, min, sec);
-	
 }
 
 void forever(void)
@@ -119,11 +130,10 @@ void forever(void)
 				send_UART_string("CRC is incorrect\n\r");
 		}
 		
-		delay_us(1000000);
+		delay_us(5000000);
 		
 	}	
 }
-
 
 void setup_eint0(void) 
 {
