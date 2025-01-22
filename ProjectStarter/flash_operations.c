@@ -67,11 +67,13 @@ int initialize_flash(void)
     if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(code), 0)) 
     {
         send_UART_string("flash init: read flash failed\n");
+       __enable_irq();
         return -1; // Reading from flash failed
     }
     
     if (memcmp(code, password, 8) == 0){
         send_UART_string("flash init: code present\n");
+        __enable_irq();
         return 0;
     }
     prepare_sector(BUTTON_REGISTER);
