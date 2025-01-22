@@ -67,11 +67,13 @@ int initialize_flash(void)
     if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(code), 0)) 
     {
         send_UART_string("flash init: read flash failed\n");
+       __enable_irq();
         return -1; // Reading from flash failed
     }
     
     if (memcmp(code, password, 8) == 0){
         send_UART_string("flash init: code present\n");
+        __enable_irq();
         return 0;
     }
     prepare_sector(BUTTON_REGISTER);
@@ -158,9 +160,15 @@ int add_history(uint8_t serial_number[], uint8_t date[])
         for (int i = 0; i < 256 - 1; i++){
             memcpy(data + i * 16, data + (i + 1) * 16, 16);
         }
-        memcpy(data + 255 * 16, serial_number, 16);
+        
+        memcpy(data + 255 * 16, serial_number, 8);
+        memcpy(data + 255 * 16 + 8, date, 6);
     }
-    memcpy(data + saved * 16, serial_number, 16);
+    else
+    {
+        memcpy(data + saved * 16, serial_number, 8);
+        memcpy(data + saved * 16 + 8, date, 6);
+    }
 
     if (!write_to_flash_sector(BUTTON_REGISTER, data, data_size))
     {
@@ -250,7 +258,10 @@ int print_history()
     uint8_t data[15];
 
     uint16_t saved = get_history_entries(); // Read from flash the number of saved entries
-    if (saved == (uint16_t)-1 || saved > 256) {  // Error reading
+    if(saved > 256)
+       saved=256;
+    
+    if (saved == (uint16_t)-1) {  // Error reading
         __enable_irq();
         return -1;
     }
@@ -311,21 +322,15 @@ int delete_iButton(uint8_t serial_number[])
     bool found = false;
     for (uint8_t i = 0; i < saved; i++) {
 			
-				sprintf(buff, "%d,%d,%d,%d,%d,%d,%d,%d\n", data[i * 8 + 0],data[i * 8 + 1],data[i * 8 + 2],data[i * 8 + 3],data[i * 8 + 4],data[i * 8 + 5],data[i * 8 + 6],data[i * 8 + 7]);
-				send_UART_string(buff);
+        sprintf(buff, "%d,%d,%d,%d,%d,%d,%d,%d\n", data[i * 8 + 0],data[i * 8 + 1],data[i * 8 + 2],data[i * 8 + 3],data[i * 8 + 4],data[i * 8 + 5],data[i * 8 + 6],data[i * 8 + 7]);
+        send_UART_string(buff);
+        
         if (!found && (memcmp(data + i * 8, serial_number, 8) == 0)) {
             found = true;  // Mark as removed
-						continue;
-        }
-        if (found && i < saved - 1) {
-            // Shift data to fill the gap
-            memcpy(data + i * 8, data + (i + 1) * 8, 8);
-						continue;
-        }
-        if (found && i == (32 - 1)) {
-            // Clear the last entry after shifting
-            memset(data + (32 - 1) * 8, 0xFF, 8);
-						break;
+            if(i<31)
+               memcpy(data + i * 8, data + (i+1) * 8, (31-i) * 8); // shift all records
+            memset(data + (saved - 1) * 8, 0xFF, (32-(saved-1)) * 8); // clear rest of buffer
+			   break;
         }
     }
 
