@@ -163,7 +163,7 @@ int add_history(uint8_t serial_number[], uint8_t date[])
     memcpy(data + saved * 16, serial_number, 8);
     memcpy(data + saved * 16 + 8, date, 6);
 		
-    char buff[32];
+    char buff[100];
 		sprintf(buff, "check:%d,%d,%d,%d,%d,%d,%d,%d\n", data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
 		//send_UART_string(buff);
 
@@ -252,7 +252,7 @@ int print_history()
     }
 
 		send_UART_string("History:\n");
-    char buff[40];
+    char buff[100];
 		for (int i = 0; i < saved; i++){
         if (!read_from_flash(HISTORY_REGISTER, data, 14, i * 16))
         {
@@ -539,7 +539,7 @@ uint16_t get_history_entries(void)
         return -1; // Reading from flash failed
     }
 		uint16_t result = (uint16_t)data[0] | ((uint16_t)data[1] << 8);
-    char buff[32];
+    char buff[50];
     sprintf(buff, "get_hist_ent: success: value=%d\n", result);
     send_UART_string(buff);
     return result;
