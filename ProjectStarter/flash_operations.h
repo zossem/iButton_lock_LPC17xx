@@ -18,8 +18,9 @@
 #define R_NUM_OFFSET 8 //number of registered capsule offset in memory
 #define H_NUM_OFFSET 16 //number of history entries offset in memory
 
+void flash_test(void);
 //Checks wheather flash already has data, if not, then prepares everything for the use
-void initialize_flash();
+int initialize_flash();
 
 /** Checks whether the iButton is in the database of iButtons that have access to the lock.
   * Returns: true - access, false - no access.
@@ -30,7 +31,7 @@ bool is_registered(uint8_t serial_number[]);
   * Serial number has 8 elements, date has 6 elements (year, month, day, hour, minutes, seconds).
   * If there is no in history space, overwrite the oldest one.
   */
-void add_history(uint8_t serial_number[], uint8_t date[]);
+int add_history(uint8_t serial_number[], uint8_t date[]);
 
 /** Adding a iButton to the database.
   * Serial number has 8 elements.
@@ -40,7 +41,7 @@ int add_iButton(uint8_t serial_number[]);
 
 /** Prints the history of all accesses
   */
-void print_history();
+int print_history();
 
 /** Delete a iButton from the database.
   * Serial number has 8 elements.
@@ -48,3 +49,4 @@ void print_history();
   */
 int delete_iButton(uint8_t serial_number[]);
 #endif
+

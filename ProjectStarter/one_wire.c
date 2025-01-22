@@ -5,7 +5,6 @@
 
 #include "uart0.h"
 
-
 uint8_t calculate_crc(uint8_t data[], uint8_t length) {
     uint8_t crc = 0; // Initialize the shift register to zero
 
