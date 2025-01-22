@@ -27,7 +27,7 @@ void RTC_Initialize(int year, int month, int day, int hour, int min, int sec)
 Time RTC_GetTime(void)
 {
     Time currentTime;
-    currentTime.year = LPC_RTC->YEAR;
+    currentTime.year = ( LPC_RTC->YEAR - 2000 );
     currentTime.month = LPC_RTC->MONTH;
     currentTime.day = LPC_RTC->DOM;
     currentTime.hour = LPC_RTC->HOUR;
@@ -48,7 +48,7 @@ void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, i
         buffer[i] = read_UART_char();
     }
     buffer[2] = '\0';
-    *year = my_atoi(buffer);
+    *year = 2000 + my_atoi(buffer);
 
     // Odczyt miesiaca
     for (int i = 0; i < 2; i++) {
