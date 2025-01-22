@@ -18,13 +18,13 @@ void open_lock()
 		for (int i = 0; i < (int)LED_GetCount(); i++)
 		{
 			LED_On(i);
-			delay_us(100000);
+			delay_us(1000001);
 		}
 	
 		for (int i = 0; i < (int)LED_GetCount(); i++)
 		{
 			LED_Off(i);
-			delay_us(100000);
+			delay_us(1000001);
 		}
 	}	
 }

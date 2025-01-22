@@ -18,24 +18,36 @@ void forever(void);
 void setup_eint0(void); // Inicialize interrupts from key0
 void setup_eint1(void); // Inicialize interrupts from key1
 
-void flashtest()
+void histtest(void)
 {
-	uint8_t serial[8] = {3,1,3,1,3,1,3,2};
+	uint8_t serial[8] = {1,1,1,1,1,1,1,1};
+	uint8_t date[6] = {2,2,2,2,2,2};
+	add_history(serial, date);
+	print_history();
+	uint8_t serial1[8] = {9,9,9,9,9,9,9,9};
+	uint8_t date1[6] = {8,8,8,8,8,8};
+	add_history(serial1, date1);
+	print_history();
+}
+
+void deletetest()
+{
+	uint8_t serial[8] = {4,4,4,4,4,4,4,4};
 	is_registered(serial);
 	add_iButton(serial);
 	is_registered(serial);
+	send_UART_string("HI");
 	delete_iButton(serial);
 	is_registered(serial);
-	uint8_t dat[6] = {1,1,1,2,2,2};
-	add_history(serial, dat);
-	print_history();
+	delete_iButton(serial);
+	send_UART_string("HI");
 }
 
 int main(void)
 {
 	start();
-	//flashtest();
-	forever();
+	//histtest();
+	//forever();
 }
 
 void start(void)
@@ -51,6 +63,7 @@ void start(void)
 	setup_eint0();
 	setup_eint1();
 	initialize_flash();
+	deletetest();
 	int year, month, day, hour, min, sec;
 	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
 	RTC_Initialize(year, month, day, hour, min, sec);
