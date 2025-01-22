@@ -48,7 +48,7 @@ void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, i
         buffer[i] = read_UART_char();
     }
     buffer[2] = '\0';
-    *year = 2000 + my_atoi(buffer);
+    *year = my_atoi(buffer);
 
     // Odczyt miesiaca
     for (int i = 0; i < 2; i++) {

@@ -62,7 +62,7 @@ int initialize_flash(void)
 {
 		__disable_irq();
     uint8_t code[8];
-    uint8_t password[8] = {1,2,4,2,5,4,2,7};
+    uint8_t password[8] = {2,1,4,2,5,4,2,7};
 
     if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(code), 0)) 
     {
@@ -127,7 +127,7 @@ bool is_registered(uint8_t serial_number[])
 
 int add_history(uint8_t serial_number[], uint8_t date[])
 {
-	__disable_irq();
+		__disable_irq();
 
     uint16_t saved = get_history_entries(); // Read from flash the number of saved entries
     if (saved == (uint16_t)-1)
@@ -160,20 +160,20 @@ int add_history(uint8_t serial_number[], uint8_t date[])
         }
         memcpy(data + 255 * 16, serial_number, 16);
     }
-    memcpy(data + saved * 16, serial_number, 16);
+    memcpy(data + saved * 16, serial_number, 8);
+    memcpy(data + saved * 16 + 8, date, 6);
+		
+    char buff[32];
+		sprintf(buff, "check:%d,%d,%d,%d,%d,%d,%d,%d\n", data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
+		//send_UART_string(buff);
 
-    if (!write_to_flash_sector(BUTTON_REGISTER, data, data_size))
+    if (!write_to_flash_sector(HISTORY_REGISTER, data, data_size))
     {
         send_UART_string("add_his: write flash failed\n");
         __enable_irq();
         free(data);
         return -1; // Failed to write to flash
     }
-		
-		char buff[32];
-		sprintf(buff, "ad_his:before:%d", saved);
-		send_UART_string(buff);
-
     saved++;
     if (set_history_entries(saved) != 0)
     {
@@ -181,9 +181,6 @@ int add_history(uint8_t serial_number[], uint8_t date[])
         free(data);
         return -1; // Failed to update the count of registered numbers
     }
-		saved = get_history_entries();
-		sprintf(buff, "ad_his:after:%d", saved);
-		send_UART_string(buff);
     send_UART_string("add_his: success\n");
     __enable_irq();
     free(data);
@@ -245,7 +242,6 @@ int add_iButton(uint8_t serial_number[])
 int print_history()
 {
     __disable_irq();
-    send_UART_string("print_his: ");
 
     uint8_t data[15];
 
@@ -255,18 +251,34 @@ int print_history()
         return -1;
     }
 
-    for (int i = 0; i < saved; i++){
+		send_UART_string("History:\n");
+    char buff[40];
+		for (int i = 0; i < saved; i++){
         if (!read_from_flash(HISTORY_REGISTER, data, 14, i * 16))
         {
-            send_UART_string("read flash failed\n");
+            send_UART_string("print_his: read flash failed\n");
             break; // Stop if reading fails
         }
-		data[14] = '\0';
-        send_UART_string((char*)data);
-        send_UART_string("\n");
+				
+				sprintf(buff, "ID:%d.%d.%d.%d.%d.%d.%d.%d Data:%d/%d/%d %d,%d,%d\n",
+																																						data[0],
+																																						data[1],
+																																						data[2],
+																																						data[3],
+																																						data[4],
+																																						data[5],
+																																						data[6],
+																																						data[7],
+																																						data[8],
+																																						data[9],
+																																						data[10],
+																																						data[11],
+																																						data[12],
+																																						data[13]);
+        send_UART_string(buff);
     }
-
-    send_UART_string("success\n");
+    
+    send_UART_string("print_his: success\n");
     __enable_irq();
     return false; // Not found
 }
@@ -305,14 +317,9 @@ int delete_iButton(uint8_t serial_number[])
         send_UART_string("del_iB:read flash failed\n");
         return -1;
     }
-		
-    char buff[20];
 
     bool found = false;
     for (uint8_t i = 0; i < saved; i++) {
-			
-				sprintf(buff, "%d,%d,%d,%d,%d,%d,%d,%d\n", data[i * 8 + 0],data[i * 8 + 1],data[i * 8 + 2],data[i * 8 + 3],data[i * 8 + 4],data[i * 8 + 5],data[i * 8 + 6],data[i * 8 + 7]);
-				send_UART_string(buff);
         if (!found && (memcmp(data + i * 8, serial_number, 8) == 0)) {
             found = true;  // Mark as removed
 						continue;
@@ -320,12 +327,12 @@ int delete_iButton(uint8_t serial_number[])
         if (found && i < saved - 1) {
             // Shift data to fill the gap
             memcpy(data + i * 8, data + (i + 1) * 8, 8);
-						continue;
+			continue;
         }
         if (found && i == (32 - 1)) {
             // Clear the last entry after shifting
             memset(data + (32 - 1) * 8, 0xFF, 8);
-						break;
+			break;
         }
     }
 
@@ -343,7 +350,7 @@ int delete_iButton(uint8_t serial_number[])
         send_UART_string("del_iB:write flash failed\n");
         return -1;
     }//w tym ifie wywala
-		send_UART_string("hi\n");
+	send_UART_string("hi\n");
     
 	free(data);
     set_number_of_registered(saved - 1);
@@ -369,7 +376,7 @@ bool prepare_sector(uint32_t sector_number)
         return false;  // Obsluga bledu
     }
 		
-		send_UART_string("p3");
+		//send_UART_string("p3");
     return true; // Sukces
 }
 
@@ -427,12 +434,12 @@ bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
         send_UART_string("write flash: data size invalid.\n");
         return false;
     }
-		send_UART_string("1\n");
+		//send_UART_string("1\n");
     if (!prepare_sector(sector_number)) return false; // Przygotowanie sektora do zapisu
     if (!erase_sector(sector_number)) return false; // Czyszczenie sektora przez zapisam(musi byc)
     if (!prepare_sector(sector_number)) return false; // Przygotowanie sektora do zapisu
 		//pomiedzy tymi dwoma blad przey delete
-		send_UART_string("2\n");
+		//send_UART_string("2\n");
     // Zapis danych
     command[0] = 51;  // Copy RAM to Flash
     command[1] = flash_address;  // Adres docelowy w pamieci Flash
@@ -440,7 +447,7 @@ bool write_to_flash_sector(uint32_t sector_number, uint8_t *data, uint32_t size)
     command[3] = size;  // Liczba bajt�w do zapisania
     command[4] = SYSTEM_CLOCK_KHZ;  // Czestotliwosc zegara
     iap_entry(command, result);
-		send_UART_string("3\n");
+		//send_UART_string("3\n");
     if (result[0] != 0)
 	{
 	    send_error_uart(result[0]);
