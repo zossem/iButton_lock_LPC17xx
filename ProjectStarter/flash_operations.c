@@ -178,7 +178,7 @@ int add_history(uint8_t serial_number[], uint8_t date[])
         return -1; // Failed to write to flash
     }
 		
-		char buff[32];
+		char buff[50];
 		sprintf(buff, "ad_his:before:%d", saved);
 		send_UART_string(buff);
 
@@ -317,7 +317,7 @@ int delete_iButton(uint8_t serial_number[])
         return -1;
     }
 		
-    char buff[20];
+    char buff[300];
 
     bool found = false;
     for (uint8_t i = 0; i < saved; i++) {
@@ -537,7 +537,7 @@ uint16_t get_history_entries(void)
         return -1; // Reading from flash failed
     }
 		uint16_t result = (uint16_t)data[0] | ((uint16_t)data[1] << 8);
-    char buff[32];
+    char buff[50];
     sprintf(buff, "get_hist_ent: success: value=%d\n", result);
     send_UART_string(buff);
     return result;
