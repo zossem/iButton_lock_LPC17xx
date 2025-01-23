@@ -33,21 +33,24 @@ void histtest(void)
 void deletetest()
 {
 	uint8_t serial[8] = {4,4,4,4,4,4,4,4};
+	send_UART_string("Start_del_test/n");
+	delete_iButton(serial);
+	send_UART_string("del_on_empty/n");
 	is_registered(serial);
 	add_iButton(serial);
 	is_registered(serial);
-	send_UART_string("HI");
 	delete_iButton(serial);
+	send_UART_string("del_on_existing/n");
 	is_registered(serial);
 	delete_iButton(serial);
-	send_UART_string("HI");
+	send_UART_string("del_deleted");
 }
 
 int main(void)
 {
 	start();
 	//histtest();
-	//forever();
+	forever();
 }
 
 void start(void)
@@ -63,7 +66,7 @@ void start(void)
 	setup_eint0();
 	setup_eint1();
 	initialize_flash();
-	deletetest();
+	//deletetest();
 	int year, month, day, hour, min, sec;
 	read_time_from_UART(&year, &month, &day, &hour, &min, &sec);
 	RTC_Initialize(year, month, day, hour, min, sec);
@@ -71,7 +74,7 @@ void start(void)
 
 void forever(void)
 {
-	char bfr[31];
+	char bfr[32];
 	
 	while (true)
 	{
@@ -195,18 +198,27 @@ void EINT1_IRQHandler(void)
 		LPC_SC->EXTINT = (1 << 1);   // Clear the EINT1 interrupt flag
 		
 		send_UART_string("Click 2\r\n");
-		
+
+		if(get_mode() == CONFIG_MODE){
+		send_UART_string("Memory Removed.\r\n");
+		reset_memory();
+		initialize_flash();
+		}
+		/*
 		if(get_mode() == CONFIG_MODE)
 		{
 			send_UART_string("Insert the iButton you want to remove from the database.\r\n");
 			
 			bool is_present=false;
 			uint8_t serial_number[8];
-			
+			send_UART_string("przed_for\n");
 			for(int t=0; t < 60; t++) // Tries to read the iButton for approximately 60 seconds
 			{
+				send_UART_string("for\n");
 				// Reading the serial number
 				int is_SN_read_unsuccessfully = read_serial_number(serial_number);
+				
+				send_UART_string("2_for\n");
 					
 				if(!is_SN_read_unsuccessfully)
 				{
@@ -229,6 +241,10 @@ void EINT1_IRQHandler(void)
 				{
 					send_UART_string("CRC is incorrect\n\r");
 				}
+				else
+				{
+					send_UART_string("dddd\n\r");
+				}
 				
 				delay_us(1000000); //Wait 1 s
 			}
@@ -250,5 +266,6 @@ void EINT1_IRQHandler(void)
 				send_UART_string("Error: Failed to detect iButton.\n\r");
 			}
 		}		
+	*/
 	}
 } 

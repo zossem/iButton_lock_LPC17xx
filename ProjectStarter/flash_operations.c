@@ -62,7 +62,7 @@ int initialize_flash(void)
 {
 		__disable_irq();
     uint8_t code[8];
-    uint8_t password[8] = {2,1,4,2,5,4,2,7};
+    uint8_t password[8] = {2,1,1,2,5,4,2,7};
 
     if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(code), 0)) 
     {
@@ -92,6 +92,21 @@ int initialize_flash(void)
     return 0;
 }
 
+int reset_memory(void){
+		__disable_irq();
+    uint8_t code[8];
+
+    if (!read_from_flash(MAINTANANCE_REGISTER, code, sizeof(code), 0)) 
+    {
+        send_UART_string("flash init: read flash failed\n");
+       __enable_irq();
+        return -1; // Reading from flash failed
+    }
+    code[0] = code[0] + 1;
+		__enable_irq();
+    set_code(code);
+    return 0;
+}
 
 bool is_registered(uint8_t serial_number[]) 
 {
@@ -165,8 +180,8 @@ int add_history(uint8_t serial_number[], uint8_t date[])
     memcpy(data + saved * 16, serial_number, 8);
     memcpy(data + saved * 16 + 8, date, 6);
 		
-    char buff[100];
-		sprintf(buff, "check:%d,%d,%d,%d,%d,%d,%d,%d\n", data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
+    //char buff[100];
+		//sprintf(buff, "check:%d,%d,%d,%d,%d,%d,%d,%d\n", data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
 		//send_UART_string(buff);
 
     if (!write_to_flash_sector(HISTORY_REGISTER, data, data_size))
@@ -263,20 +278,20 @@ int print_history()
         }
 				
 				sprintf(buff, "ID:%d.%d.%d.%d.%d.%d.%d.%d Data:%d/%d/%d %d,%d,%d\n",
-																																						data[0],
-																																						data[1],
-																																						data[2],
-																																						data[3],
-																																						data[4],
-																																						data[5],
-																																						data[6],
-																																						data[7],
-																																						data[8],
-																																						data[9],
-																																						data[10],
-																																						data[11],
-																																						data[12],
-																																						data[13]);
+																																				data[0],
+																																				data[1],
+																																				data[2],
+																																				data[3],
+																																				data[4],
+																																				data[5],
+																																				data[6],
+																																				data[7],
+																																				data[8],
+																																				data[9],
+																																				data[10],
+																																				data[11],
+																																				data[12],
+																																				data[13]);
         send_UART_string(buff);
     }
     
@@ -322,7 +337,7 @@ int delete_iButton(uint8_t serial_number[])
 
     bool found = false;
     for (uint8_t i = 0; i < saved; i++) {
-        if (!found && (memcmp(data + i * 8, serial_number, 8) == 0)) {
+			if (!found && (memcmp(data + i * 8, serial_number, 8) == 0)) {
             found = true;  // Mark as removed
 						continue;
         }
@@ -336,6 +351,13 @@ int delete_iButton(uint8_t serial_number[])
             memset(data + (32 - 1) * 8, 0xFF, 8);
 			break;
         }
+        /*if (memcmp(data + i * 8, serial_number, 8) == 0 ) {
+					found = true;
+					if (i < 31)
+						memcpy(data + i * 8, data + (i + 1) * 8, (31-1) * 8);
+					memset(data + (saved - 1) * 8, 0xFF, (32 - (saved - 1)) * 8);
+					break
+				}*/
     }
 
     if (!found) {
@@ -363,15 +385,23 @@ int delete_iButton(uint8_t serial_number[])
 
 bool prepare_sector(uint32_t sector_number)
 {
-	send_UART_string("p1");
+	//send_UART_string("p1\n");
     unsigned int command[5];
     unsigned int result[5];
     command[0] = 50;  // Prepare Sector
     command[1] = sector_number;  // Numer sektora
     command[2] = sector_number;  // Numer sektora (tylko jeden sektor)
+	char debug_msg[64];
+	//sprintf(debug_msg, "del_iB: sector=%d\n", sector_number);
+	//send_UART_string(debug_msg);
+
+	//sprintf(debug_msg, "iap: cmd=%d, addr=0x%08X, data=0x%08X, size=%d\n",
+	//								command[0], command[1], command[2], command[3]);
+	//send_UART_string(debug_msg);
+
     iap_entry(command, result);
 	//miedzy tymi blad przy delete tak ze apke wywala (sprobuje zmienic sektor)
-	send_UART_string("p2");
+	//send_UART_string("p2\n");
     if (result[0] != 0)
     {
 			send_error_uart(result[0]);
@@ -502,18 +532,17 @@ int set_number_of_registered(uint8_t new_number)
 
 int set_code(uint8_t* code)
 {
-    send_UART_string("set_code: ");
     uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * 8  * 32); // Allocate heap memory
     if (data == NULL)
     {
-        send_UART_string("mem failed\n");
+        send_UART_string("set_code: mem failed\n");
         return 1; // Memory allocation failed
     }
 
     if (!read_from_flash(MAINTANANCE_REGISTER, data, 8 * 32, 0)) 
     {
         free(data);
-        send_UART_string("read flash failed\n");
+        send_UART_string("set_code: read flash failed\n");
         return -1; // Reading from flash failed
     }
 
@@ -522,12 +551,12 @@ int set_code(uint8_t* code)
     if (!write_to_flash_sector(MAINTANANCE_REGISTER, data, 8 * 32)) 
     {
         free(data);
-        send_UART_string("write flash failed\n");
+        send_UART_string("set_code: write flash failed\n");
         return -1; // Writing to flash failed
     }
 
     free(data);
-    send_UART_string("success\n");
+    send_UART_string("set_code: success\n");
     return 0;
 }
 
