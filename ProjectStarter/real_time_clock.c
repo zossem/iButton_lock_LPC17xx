@@ -101,16 +101,3 @@ int my_atoi(const char *str)
     }
     return result;
 }
-/*
-void testRTC(void)
-{
-	char bfr[31];
-	Time currentTime;
-	// Odczyt aktualnego czasu z RTC
-	currentTime = RTC_GetTime();
-
-	// Wyswietlenie aktualnego czasu
-	sprintf(bfr, "Time: %02d:%02d:%02d\r\n", currentTime.hour, currentTime.minute, currentTime.second);
-	send_UART_string(bfr);
-}
-*/

@@ -7,7 +7,6 @@
 #define TICKS_IN_MICROSECOND 1
 
 void SysTick_Initialize(void); 
-//void SysTick_Handler(void); 
 
 /** Waits for a time equal to the input value (us) milliseconds.
   * While waiting, it goes to sleep mode.

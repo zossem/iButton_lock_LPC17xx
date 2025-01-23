@@ -351,13 +351,6 @@ int delete_iButton(uint8_t serial_number[])
             memset(data + (32 - 1) * 8, 0xFF, 8);
 			break;
         }
-        /*if (memcmp(data + i * 8, serial_number, 8) == 0 ) {
-					found = true;
-					if (i < 31)
-						memcpy(data + i * 8, data + (i + 1) * 8, (31-1) * 8);
-					memset(data + (saved - 1) * 8, 0xFF, (32 - (saved - 1)) * 8);
-					break
-				}*/
     }
 
     if (!found) {

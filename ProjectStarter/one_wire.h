@@ -59,12 +59,4 @@ uint8_t one_wire_read_byte(void);
 int read_serial_number(uint8_t serial_number[]);
 
 
-/*
-use sample
-{
-    // Reading the serial number
-	uint8_t serial_number[8];
-    int isOK = read_serial_number(serial_number);
-}
-*/
 #endif
