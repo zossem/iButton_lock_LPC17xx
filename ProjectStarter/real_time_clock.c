@@ -64,6 +64,7 @@ void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, i
     buffer[2] = '\0';
     *day = my_atoi(buffer);
 
+	send_UART_string("\n");
     // Wyslanie komunikatu do uzytkownika
     send_UART_string("Enter the time in HHMMSS format:\r\n");
 
@@ -88,6 +89,7 @@ void read_time_from_UART(int *year, int *month, int *day, int *hour, int *min, i
     buffer[2] = '\0';
     *sec = my_atoi(buffer);
 		__enable_irq();
+	send_UART_string("\n");
 }
 
 int my_atoi(const char *str)

@@ -62,5 +62,9 @@ char read_UART_char(void)
 {
 	while(!(p_UART2->LSR & 0x01));  // check if The UART1 receiver FIFO is not empty.
 	char recived = p_UART2->RBR;
+	char echo[2];
+	echo[0]=recived;
+	echo[1]='\0';
+	send_UART_string(echo);
 	return recived;
 }
